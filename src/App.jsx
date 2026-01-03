@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Download, Image, Upload, LogOut, User } from "lucide-react";
 
-const API_URL = "https://income-tax-tracker.onrender.com/api";
+const API_URL = "https://income-tax-tracker.onrender.com";
 
 export default function SMSIncomeTracker() {
   const [smsText, setSmsText] = useState("");
