@@ -1,5 +1,5 @@
-import logo from './assets/logo.png';
-import React, { useState, useEffect } from "react";
+import logo from "./assets/logo.png";
+import React, { useEffect, useState } from "react";
 import { Plus, Trash2, Download, Image, Upload, LogOut, User } from "lucide-react";
 
 const API_URL = "https://income-tax-tracker.onrender.com/api";
@@ -13,6 +13,7 @@ export default function SMSIncomeTracker() {
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showDebitPopup, setShowDebitPopup] = useState(false);
+
   const [userName, setUserName] = useState("");
   const [showNameInput, setShowNameInput] = useState(false);
   const [tempName, setTempName] = useState("");
@@ -76,12 +77,10 @@ export default function SMSIncomeTracker() {
       setError("Please fill in all fields");
       return;
     }
-
     if (registerPassword.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
-
     if (registerPassword !== registerConfirmPassword) {
       setError("Passwords do not match");
       return;
@@ -267,7 +266,6 @@ export default function SMSIncomeTracker() {
   function isDebitTransaction(text) {
     const lowerText = text.toLowerCase();
     const criticalKeywords = ["debit", "dr"];
-
     for (const keyword of criticalKeywords) {
       if (new RegExp(`\\b${keyword}\\b`, "i").test(text)) return true;
     }
@@ -534,7 +532,7 @@ export default function SMSIncomeTracker() {
     );
   }
 
-  // ✅ Prevent crash if auth is true but user is still null
+  // Prevent crash if auth is true but user is still null
   if (isAuthenticated && !currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-green-900">
@@ -543,252 +541,199 @@ export default function SMSIncomeTracker() {
     );
   }
 
-  // Auth screen
+  // ✅ AUTH SCREEN (Styled + Logo)
   if (!isAuthenticated) {
-  return (
-    <div className="min-h-screen relative flex items-center justify-center p-4">
-      {/* Background */}
-      <div
-        className="fixed inset-0 -z-10"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 20% 20%, rgba(59,130,246,.25), transparent 40%), radial-gradient(circle at 80% 0%, rgba(168,85,247,.20), transparent 45%), radial-gradient(circle at 80% 80%, rgba(34,197,94,.20), transparent 45%), linear-gradient(135deg, #050B1A 0%, #0B1025 50%, #071021 100%)',
-        }}
-      />
+    return (
+      <div className="min-h-screen relative flex items-center justify-center p-4">
+        {/* Background */}
+        <div
+          className="fixed inset-0 -z-10"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 20% 20%, rgba(59,130,246,.25), transparent 40%), radial-gradient(circle at 80% 0%, rgba(168,85,247,.20), transparent 45%), radial-gradient(circle at 80% 80%, rgba(34,197,94,.20), transparent 45%), linear-gradient(135deg, #050B1A 0%, #0B1025 50%, #071021 100%)",
+          }}
+        />
 
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="flex justify-center mb-3">
-            <div className="h-16 w-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-xl">
-              <img
-                src={logo}
-                alt="Income Tax Tracker logo"
-                className="h-10 w-10 object-contain"
-              />
+        <div className="w-full max-w-md">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-white/15 p-3 shadow-lg ring-1 ring-white/20 backdrop-blur">
+              <img src={logo} alt="Income Tax Tracker logo" className="h-full w-full object-contain" />
             </div>
-         <div className="text-center mb-8">
-  <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-white/15 p-3 shadow-lg ring-1 ring-white/20 backdrop-blur">
-    <img
-      src={logo}
-      alt="Income Tax Tracker logo"
-      className="h-full w-full object-contain"
-    />
-  </div>
 
-  <h2 className="text-3xl font-bold text-white mb-2">Income Tax Tracker</h2>
-  <p className="text-gray-200">Secure • Private • Easy to use</p>
-</div>
-
-
-        {/* Card */}
-        <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-6 md:p-8">
-          {/* Tabs */}
-          <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => {
-                setShowLogin(true);
-                setError('');
-              }}
-              className={`flex-1 py-3 rounded-2xl font-semibold transition-all ${
-                showLogin
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Login
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setShowLogin(false);
-                setError('');
-              }}
-              className={`flex-1 py-3 rounded-2xl font-semibold transition-all ${
-                !showLogin
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Register
-            </button>
+            <h2 className="text-3xl font-bold text-white mb-2">Income Tax Tracker</h2>
+            <p className="text-white/70">Secure • Private • Easy to use</p>
           </div>
 
-          {/* Alerts */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-2xl border border-red-200 text-sm">
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-2xl border border-green-200 text-sm">
-              {success}
-            </div>
-          )}
-
-          {/* Forms */}
-          {showLogin ? (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="loginEmail"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Email Address
-                </label>
-                <input
-                  id="loginEmail"
-                  name="loginEmail"
-                  type="email"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  autoComplete="email"
-                  className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="loginPassword"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Password
-                </label>
-                <input
-                  id="loginPassword"
-                  name="loginPassword"
-                  type="password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  required
-                />
-              </div>
-
+          {/* Card */}
+          <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-6 md:p-8">
+            {/* Tabs */}
+            <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-2xl">
               <button
-                type="submit"
-                className="w-full mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-2xl hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-lg transition-all"
+                type="button"
+                onClick={() => {
+                  setShowLogin(true);
+                  setError("");
+                  setSuccess("");
+                }}
+                className={`flex-1 py-3 rounded-2xl font-semibold transition-all ${
+                  showLogin ? "bg-white text-blue-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                }`}
               >
                 Login
               </button>
-            </form>
-          ) : (
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="registerName"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Full Name
-                </label>
-                <input
-                  id="registerName"
-                  name="registerName"
-                  type="text"
-                  value={registerName}
-                  onChange={(e) => setRegisterName(e.target.value)}
-                  placeholder="John Doe"
-                  autoComplete="name"
-                  className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="registerEmail"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Email Address
-                </label>
-                <input
-                  id="registerEmail"
-                  name="registerEmail"
-                  type="email"
-                  value={registerEmail}
-                  onChange={(e) => setRegisterEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  autoComplete="email"
-                  className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="registerPassword"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Password
-                </label>
-                <input
-                  id="registerPassword"
-                  name="registerPassword"
-                  type="password"
-                  value={registerPassword}
-                  onChange={(e) => setRegisterPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  At least 6 characters
-                </p>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="registerConfirmPassword"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Confirm Password
-                </label>
-                <input
-                  id="registerConfirmPassword"
-                  name="registerConfirmPassword"
-                  type="password"
-                  value={registerConfirmPassword}
-                  onChange={(e) => setRegisterConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                  className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                  required
-                />
-              </div>
 
               <button
-                type="submit"
-                className="w-full mt-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-2xl hover:from-green-700 hover:to-emerald-700 font-semibold shadow-lg transition-all"
+                type="button"
+                onClick={() => {
+                  setShowLogin(false);
+                  setError("");
+                  setSuccess("");
+                }}
+                className={`flex-1 py-3 rounded-2xl font-semibold transition-all ${
+                  !showLogin ? "bg-white text-blue-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                }`}
               >
-                Create Account
+                Register
               </button>
-            </form>
-          )}
+            </div>
+
+            {/* Alerts */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-2xl border border-red-200 text-sm">{error}</div>
+            )}
+            {success && (
+              <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-2xl border border-green-200 text-sm">
+                {success}
+              </div>
+            )}
+
+            {/* Forms */}
+            {showLogin ? (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label htmlFor="loginEmail" className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    id="loginEmail"
+                    type="email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="loginPassword" className="block text-sm font-semibold text-gray-700 mb-2">
+                    Password
+                  </label>
+                  <input
+                    id="loginPassword"
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-2xl hover:from-blue-700 hover:to-indigo-700 font-semibold shadow-lg transition-all"
+                >
+                  Login
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div>
+                  <label htmlFor="registerName" className="block text-sm font-semibold text-gray-700 mb-2">
+                    Full Name
+                  </label>
+                  <input
+                    id="registerName"
+                    type="text"
+                    value={registerName}
+                    onChange={(e) => setRegisterName(e.target.value)}
+                    placeholder="John Doe"
+                    className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="registerEmail" className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    id="registerEmail"
+                    type="email"
+                    value={registerEmail}
+                    onChange={(e) => setRegisterEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="registerPassword" className="block text-sm font-semibold text-gray-700 mb-2">
+                    Password
+                  </label>
+                  <input
+                    id="registerPassword"
+                    type="password"
+                    value={registerPassword}
+                    onChange={(e) => setRegisterPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
+                </div>
+
+                <div>
+                  <label htmlFor="registerConfirmPassword" className="block text-sm font-semibold text-gray-700 mb-2">
+                    Confirm Password
+                  </label>
+                  <input
+                    id="registerConfirmPassword"
+                    type="password"
+                    value={registerConfirmPassword}
+                    onChange={(e) => setRegisterConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full mt-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-2xl hover:from-green-700 hover:to-emerald-700 font-semibold shadow-lg transition-all"
+                >
+                  Create Account
+                </button>
+              </form>
+            )}
+          </div>
+
+          <p className="text-center text-white/70 text-sm mt-5">🔒 Your data is encrypted and secure</p>
         </div>
-
-        <p className="text-center text-white/70 text-sm mt-5">
-          🔒 Your data is encrypted and secure
-        </p>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-  // Main app
+  // ✅ MAIN APP
   return (
     <div className="min-h-screen relative p-4 md:p-8">
       <div
         className="fixed inset-0 z-0"
         style={{
-          backgroundImage:
-            "url(https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=1200&q=80)",
+          backgroundImage: "url(https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=1200&q=80)",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundAttachment: "fixed",
@@ -821,10 +766,7 @@ export default function SMSIncomeTracker() {
               <p className="text-center text-gray-600 mb-6 text-sm">
                 Only <span className="font-semibold text-green-600">income (credit)</span> transactions allowed.
               </p>
-              <button
-                onClick={() => setShowDebitPopup(false)}
-                className="w-full bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 font-semibold"
-              >
+              <button onClick={() => setShowDebitPopup(false)} className="w-full bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 font-semibold">
                 Close
               </button>
             </div>
@@ -836,8 +778,10 @@ export default function SMSIncomeTracker() {
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-3xl shadow-2xl p-8 mb-8 text-white">
             <div className="flex justify-between items-start flex-wrap gap-4">
               <div>
-                <img src={logo} alt="Logo" className="h-16 w-16 mx-auto mb-3" />
-
+                <div className="flex items-center gap-3 mb-2">
+                  <img src={logo} alt="Logo" className="h-10 w-10" />
+                  <h1 className="text-3xl md:text-4xl font-bold">Income Tax Tracker</h1>
+                </div>
                 <p className="text-blue-100 text-lg">Track income • Calculate tax</p>
               </div>
 
@@ -866,19 +810,13 @@ export default function SMSIncomeTracker() {
                       </button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => setShowNameInput(true)}
-                      className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg mt-2"
-                    >
+                    <button onClick={() => setShowNameInput(true)} className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg mt-2">
                       + Add Name
                     </button>
                   )}
                 </div>
 
-                <button
-                  onClick={handleLogout}
-                  className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-xl font-semibold flex items-center gap-2"
-                >
+                <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-xl font-semibold flex items-center gap-2">
                   <LogOut size={18} />
                   Logout
                 </button>
@@ -925,9 +863,7 @@ export default function SMSIncomeTracker() {
           {(error || success) && (
             <div className="mb-6 space-y-3">
               {error && <div className="p-4 bg-red-50 text-red-700 rounded-2xl border border-red-200">{error}</div>}
-              {success && (
-                <div className="p-4 bg-green-50 text-green-700 rounded-2xl border border-green-200">{success}</div>
-              )}
+              {success && <div className="p-4 bg-green-50 text-green-700 rounded-2xl border border-green-200">{success}</div>}
             </div>
           )}
 
@@ -966,13 +902,7 @@ export default function SMSIncomeTracker() {
                         <Image size={20} />
                         Upload Screenshot
                       </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                        capture="environment"
-                      />
+                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" capture="environment" />
                     </label>
 
                     <p className="text-sm text-gray-600 mt-3">Or paste SMS text below</p>
@@ -980,19 +910,11 @@ export default function SMSIncomeTracker() {
 
                   {selectedImage && (
                     <div className="mt-4">
-                      <img
-                        src={selectedImage}
-                        alt="SMS"
-                        className="max-w-full h-auto max-h-64 mx-auto rounded-xl border-2 border-blue-200"
-                      />
+                      <img src={selectedImage} alt="SMS" className="max-w-full h-auto max-h-64 mx-auto rounded-xl border-2 border-blue-200" />
                     </div>
                   )}
 
-                  {isProcessingImage && (
-                    <div className="mt-4 text-center text-sm text-blue-700 font-semibold">
-                      Processing image… please wait
-                    </div>
-                  )}
+                  {isProcessingImage && <div className="mt-4 text-center text-sm text-blue-700 font-semibold">Processing image… please wait</div>}
                 </div>
 
                 <textarea
@@ -1041,9 +963,7 @@ export default function SMSIncomeTracker() {
               <h2 className="text-xl font-bold mb-4">📌 Transactions</h2>
 
               {transactions.length === 0 ? (
-                <div className="p-4 rounded-xl bg-gray-50 text-gray-600 border border-gray-200">
-                  No transactions yet.
-                </div>
+                <div className="p-4 rounded-xl bg-gray-50 text-gray-600 border border-gray-200">No transactions yet.</div>
               ) : (
                 <div className="overflow-auto rounded-xl border border-gray-200">
                   <table className="min-w-full text-sm">
@@ -1062,10 +982,7 @@ export default function SMSIncomeTracker() {
                           <td className="p-3 whitespace-nowrap font-semibold">{formatNGN(t.amount)}</td>
                           <td className="p-3 whitespace-nowrap">{t.bank || "-"}</td>
                           <td className="p-3 text-right">
-                            <button
-                              onClick={() => handleDelete(t.id)}
-                              className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-semibold"
-                            >
+                            <button onClick={() => handleDelete(t.id)} className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-semibold">
                               <Trash2 size={16} />
                               Delete
                             </button>
@@ -1077,7 +994,6 @@ export default function SMSIncomeTracker() {
                 </div>
               )}
 
-              {/* Optional: show last description */}
               {transactions.length > 0 && (
                 <div className="mt-4 p-3 rounded-xl bg-gray-50 border border-gray-200">
                   <p className="text-xs text-gray-600">
