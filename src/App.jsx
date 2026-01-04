@@ -1,8 +1,12 @@
-import logo from "./assets/logo.png";
 import React, { useEffect, useState } from "react";
+import logo from "./assets/logo.png";
 import { Plus, Trash2, Download, Image, Upload, LogOut, User } from "lucide-react";
 
-const API_URL = "https://income-tax-tracker.onrender.com/api";
+const API_URL = "https://income-tax-tracker.onrender.com";
+
+function escapeRegExp(str = "") {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export default function SMSIncomeTracker() {
   const [smsText, setSmsText] = useState("");
@@ -31,22 +35,18 @@ export default function SMSIncomeTracker() {
 
   useEffect(() => {
     checkAuthentication();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && authToken) {
-      loadTransactions();
-    }
+    if (isAuthenticated && authToken) loadTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, authToken]);
 
   async function checkAuthentication() {
     try {
       const token = localStorage.getItem("authToken");
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
+      if (!token) return;
       const response = await fetch(`${API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -214,9 +214,17 @@ export default function SMSIncomeTracker() {
     }
   }
 
+  function convertImageToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1]);
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function handleImageUpload(event) {
     const file = event.target.files?.[0];
-
     if (!file || !file.type.startsWith("image/")) {
       setError("Please select a valid image file");
       return;
@@ -252,15 +260,6 @@ export default function SMSIncomeTracker() {
     } finally {
       setIsProcessingImage(false);
     }
-  }
-
-  function convertImageToBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result).split(",")[1]);
-      reader.onerror = () => reject(new Error("Failed to read file"));
-      reader.readAsDataURL(file);
-    });
   }
 
   function isDebitTransaction(text) {
@@ -349,11 +348,66 @@ export default function SMSIncomeTracker() {
       }
     }
 
-    if (!transaction.description) {
-      transaction.description = text.substring(0, 60) + "...";
+    if (!transaction.description) transaction.description = text.substring(0, 60) + "...";
+    return transaction;
+  }
+
+  function checkIfUserIsReceiver(text) {
+    if (!userName) return false;
+    const name = escapeRegExp(userName.trim());
+    const patterns = [
+      new RegExp(`\\bto\\s+${name}\\b`, "i"),
+      new RegExp(`\\breceiver[:\\s]+${name}\\b`, "i"),
+      new RegExp(`\\bbeneficiary[:\\s]+${name}\\b`, "i"),
+      new RegExp(`\\bcredited to\\s+${name}\\b`, "i"),
+      new RegExp(`\\brecipient[:\\s]+${name}\\b`, "i"),
+    ];
+    return patterns.some((p) => p.test(text));
+  }
+
+  function checkIfUserIsSender(text) {
+    if (!userName) return false;
+    const name = escapeRegExp(userName.trim());
+    const patterns = [
+      new RegExp(`\\bfrom\\s+${name}\\b`, "i"),
+      new RegExp(`\\bsender[:\\s]+${name}\\b`, "i"),
+      new RegExp(`\\bby\\s+${name}\\b`, "i"),
+      new RegExp(`\\btransfer from\\s+${name}\\b`, "i"),
+    ];
+    return patterns.some((p) => p.test(text));
+  }
+
+  async function processAsCredit() {
+    const newTransaction = parseSMS(smsText);
+    if (newTransaction.amount <= 0) {
+      setError("⚠️ Could not extract valid amount.");
+      return;
     }
 
-    return transaction;
+    try {
+      const response = await fetch(`${API_URL}/transactions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(newTransaction),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions((prev) => [data.transaction, ...prev]);
+        setSmsText("");
+        setSelectedImage(null);
+        setSuccess("✅ Transaction added!");
+        setTimeout(() => setSuccess(""), 3000);
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        setError(errData.error || "Failed to save transaction");
+      }
+    } catch (err) {
+      setError("Failed to save: " + err.message);
+    }
   }
 
   async function handleAddTransaction() {
@@ -365,14 +419,12 @@ export default function SMSIncomeTracker() {
       return;
     }
 
-    const isUserReceiver = checkIfUserIsReceiver(smsText);
-    if (isUserReceiver) {
+    if (checkIfUserIsReceiver(smsText)) {
       await processAsCredit();
       return;
     }
 
-    const isUserSender = checkIfUserIsSender(smsText);
-    if (isUserSender || isDebitTransaction(smsText)) {
+    if (checkIfUserIsSender(smsText) || isDebitTransaction(smsText)) {
       setShowDebitPopup(true);
       setError("🚫 DEBIT DETECTED! Only credit/income alerts accepted.");
       setTimeout(() => {
@@ -391,64 +443,6 @@ export default function SMSIncomeTracker() {
     await processAsCredit();
   }
 
-  async function processAsCredit() {
-    const newTransaction = parseSMS(smsText);
-
-    if (newTransaction.amount <= 0) {
-      setError("⚠️ Could not extract valid amount.");
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/transactions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(newTransaction),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTransactions([data.transaction, ...transactions]);
-        setSmsText("");
-        setSelectedImage(null);
-        setSuccess("✅ Transaction added!");
-        setTimeout(() => setSuccess(""), 3000);
-      } else {
-        const errData = await response.json().catch(() => ({}));
-        setError(errData.error || "Failed to save transaction");
-      }
-    } catch (err) {
-      setError("Failed to save: " + err.message);
-    }
-  }
-
-  function checkIfUserIsReceiver(text) {
-    if (!userName) return false;
-    const patterns = [
-      new RegExp(`\\bto\\s+${userName.toLowerCase()}\\b`, "i"),
-      new RegExp(`\\breceiver[:\\s]+${userName.toLowerCase()}\\b`, "i"),
-      new RegExp(`\\bbeneficiary[:\\s]+${userName.toLowerCase()}\\b`, "i"),
-      new RegExp(`\\bcredited to\\s+${userName.toLowerCase()}\\b`, "i"),
-      new RegExp(`\\brecipient[:\\s]+${userName.toLowerCase()}\\b`, "i"),
-      new RegExp(`\\bpayment to\\s+${userName.toLowerCase()}\\b`, "i"),
-    ];
-    return patterns.some((p) => p.test(text));
-  }
-
-  function checkIfUserIsSender(text) {
-    if (!userName) return false;
-    const patterns = [
-      new RegExp(`\\bfrom\\s+${userName.toLowerCase()}\\b`, "i"),
-      new RegExp(`\\bsender[:\\s]+${userName.toLowerCase()}\\b`, "i"),
-      new RegExp(`\\bby\\s+${userName.toLowerCase()}\\b`, "i"),
-      new RegExp(`\\btransfer from\\s+${userName.toLowerCase()}\\b`, "i"),
-    ];
-    return patterns.some((p) => p.test(text));
-  }
-
   async function handleDelete(id) {
     try {
       const response = await fetch(`${API_URL}/transactions/${id}`, {
@@ -457,13 +451,13 @@ export default function SMSIncomeTracker() {
       });
 
       if (response.ok) {
-        setTransactions(transactions.filter((t) => t.id !== id));
+        setTransactions((prev) => prev.filter((t) => t.id !== id));
         setSuccess("✅ Deleted");
         setTimeout(() => setSuccess(""), 2500);
       } else {
         setError("Delete failed");
       }
-    } catch (err) {
+    } catch {
       setError("Delete failed");
     }
   }
@@ -497,8 +491,7 @@ export default function SMSIncomeTracker() {
     let tax = 0;
     let previousLimit = 0;
 
-    for (let i = 0; i < brackets.length; i++) {
-      const bracket = brackets[i];
+    for (const bracket of brackets) {
       if (income <= bracket.limit) {
         tax += Math.max(0, income - previousLimit) * bracket.rate;
         break;
@@ -507,7 +500,6 @@ export default function SMSIncomeTracker() {
         previousLimit = bracket.limit;
       }
     }
-
     return tax;
   }
 
@@ -523,7 +515,6 @@ export default function SMSIncomeTracker() {
       maximumFractionDigits: 2,
     }).format(n || 0);
 
-  // Loading
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-green-900">
@@ -532,7 +523,6 @@ export default function SMSIncomeTracker() {
     );
   }
 
-  // Prevent crash if auth is true but user is still null
   if (isAuthenticated && !currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-green-900">
@@ -541,33 +531,29 @@ export default function SMSIncomeTracker() {
     );
   }
 
-  // ✅ AUTH SCREEN (Styled + Logo)
+  // AUTH SCREEN
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen relative flex items-center justify-center p-4">
-        {/* Background */}
         <div
           className="fixed inset-0 -z-10"
           style={{
             backgroundImage:
-              "radial-gradient(circle at 20% 20%, rgba(59,130,246,.25), transparent 40%), radial-gradient(circle at 80% 0%, rgba(168,85,247,.20), transparent 45%), radial-gradient(circle at 80% 80%, rgba(34,197,94,.20), transparent 45%), linear-gradient(135deg, #050B1A 0%, #0B1025 50%, #071021 100%)",
+              'radial-gradient(circle at 20% 20%, rgba(59,130,246,.25), transparent 40%), radial-gradient(circle at 80% 0%, rgba(168,85,247,.20), transparent 45%), radial-gradient(circle at 80% 80%, rgba(34,197,94,.20), transparent 45%), linear-gradient(135deg, #050B1A 0%, #0B1025 50%, #071021 100%)',
           }}
         />
 
         <div className="w-full max-w-md">
-          {/* Header */}
           <div className="text-center mb-6">
             <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-white/15 p-3 shadow-lg ring-1 ring-white/20 backdrop-blur">
               <img src={logo} alt="Income Tax Tracker logo" className="h-full w-full object-contain" />
             </div>
 
             <h2 className="text-3xl font-bold text-white mb-2">Income Tax Tracker</h2>
-            <p className="text-white/70">Secure • Private • Easy to use</p>
+            <p className="text-white/80">Secure • Private • Easy to use</p>
           </div>
 
-          {/* Card */}
           <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-6 md:p-8">
-            {/* Tabs */}
             <div className="flex gap-2 mb-6 bg-gray-100 p-1 rounded-2xl">
               <button
                 type="button"
@@ -598,7 +584,6 @@ export default function SMSIncomeTracker() {
               </button>
             </div>
 
-            {/* Alerts */}
             {error && (
               <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-2xl border border-red-200 text-sm">{error}</div>
             )}
@@ -608,34 +593,29 @@ export default function SMSIncomeTracker() {
               </div>
             )}
 
-            {/* Forms */}
             {showLogin ? (
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label htmlFor="loginEmail" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Email Address
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
                   <input
-                    id="loginEmail"
                     type="email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     placeholder="your@email.com"
+                    autoComplete="email"
                     className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="loginPassword" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Password
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
                   <input
-                    id="loginPassword"
                     type="password"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="••••••••"
+                    autoComplete="current-password"
                     className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     required
                   />
@@ -651,45 +631,39 @@ export default function SMSIncomeTracker() {
             ) : (
               <form onSubmit={handleRegister} className="space-y-4">
                 <div>
-                  <label htmlFor="registerName" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Full Name
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
                   <input
-                    id="registerName"
                     type="text"
                     value={registerName}
                     onChange={(e) => setRegisterName(e.target.value)}
                     placeholder="John Doe"
+                    autoComplete="name"
                     className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="registerEmail" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Email Address
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
                   <input
-                    id="registerEmail"
                     type="email"
                     value={registerEmail}
                     onChange={(e) => setRegisterEmail(e.target.value)}
                     placeholder="your@email.com"
+                    autoComplete="email"
                     className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="registerPassword" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Password
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
                   <input
-                    id="registerPassword"
                     type="password"
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     required
                   />
@@ -697,15 +671,13 @@ export default function SMSIncomeTracker() {
                 </div>
 
                 <div>
-                  <label htmlFor="registerConfirmPassword" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Confirm Password
-                  </label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
                   <input
-                    id="registerConfirmPassword"
                     type="password"
                     value={registerConfirmPassword}
                     onChange={(e) => setRegisterConfirmPassword(e.target.value)}
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     className="w-full p-3 border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     required
                   />
@@ -727,7 +699,7 @@ export default function SMSIncomeTracker() {
     );
   }
 
-  // ✅ MAIN APP
+  // MAIN APP
   return (
     <div className="min-h-screen relative p-4 md:p-8">
       <div
@@ -739,26 +711,13 @@ export default function SMSIncomeTracker() {
           backgroundAttachment: "fixed",
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/70 via-purple-900/60 to-green-900/70 backdrop-blur-sm"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/70 via-purple-900/60 to-green-900/70 backdrop-blur-sm" />
       </div>
 
       <div className="relative z-10">
-        {/* Debit popup */}
         {showDebitPopup && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
-              <div className="flex justify-center mb-4">
-                <div className="bg-red-100 rounded-full p-4">
-                  <svg className="w-16 h-16 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                </div>
-              </div>
               <h2 className="text-2xl font-bold text-center text-red-600 mb-3">⛔ DEBIT DETECTED</h2>
               <p className="text-center text-gray-700 mb-2">
                 This is a <span className="font-bold text-red-600">debit/withdrawal</span> alert.
@@ -766,7 +725,10 @@ export default function SMSIncomeTracker() {
               <p className="text-center text-gray-600 mb-6 text-sm">
                 Only <span className="font-semibold text-green-600">income (credit)</span> transactions allowed.
               </p>
-              <button onClick={() => setShowDebitPopup(false)} className="w-full bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 font-semibold">
+              <button
+                onClick={() => setShowDebitPopup(false)}
+                className="w-full bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 font-semibold"
+              >
                 Close
               </button>
             </div>
@@ -774,12 +736,11 @@ export default function SMSIncomeTracker() {
         )}
 
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-3xl shadow-2xl p-8 mb-8 text-white">
             <div className="flex justify-between items-start flex-wrap gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <img src={logo} alt="Logo" className="h-10 w-10" />
+                  <img src={logo} alt="Logo" className="h-10 w-10 object-contain" />
                   <h1 className="text-3xl md:text-4xl font-bold">Income Tax Tracker</h1>
                 </div>
                 <p className="text-blue-100 text-lg">Track income • Calculate tax</p>
@@ -810,13 +771,19 @@ export default function SMSIncomeTracker() {
                       </button>
                     </div>
                   ) : (
-                    <button onClick={() => setShowNameInput(true)} className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg mt-2">
+                    <button
+                      onClick={() => setShowNameInput(true)}
+                      className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg mt-2"
+                    >
                       + Add Name
                     </button>
                   )}
                 </div>
 
-                <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-xl font-semibold flex items-center gap-2">
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded-xl font-semibold flex items-center gap-2"
+                >
                   <LogOut size={18} />
                   Logout
                 </button>
@@ -824,7 +791,6 @@ export default function SMSIncomeTracker() {
             </div>
           </div>
 
-          {/* Name Modal */}
           {showNameInput && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
               <div className="bg-white rounded-2xl max-w-md w-full p-8">
@@ -859,15 +825,15 @@ export default function SMSIncomeTracker() {
             </div>
           )}
 
-          {/* Alerts */}
           {(error || success) && (
             <div className="mb-6 space-y-3">
               {error && <div className="p-4 bg-red-50 text-red-700 rounded-2xl border border-red-200">{error}</div>}
-              {success && <div className="p-4 bg-green-50 text-green-700 rounded-2xl border border-green-200">{success}</div>}
+              {success && (
+                <div className="p-4 bg-green-50 text-green-700 rounded-2xl border border-green-200">{success}</div>
+              )}
             </div>
           )}
 
-          {/* Summary */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white/95 rounded-3xl p-5 shadow-xl">
               <p className="text-sm text-gray-500">Total Income</p>
@@ -887,9 +853,7 @@ export default function SMSIncomeTracker() {
             </div>
           </div>
 
-          {/* Main grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Add transaction */}
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-lg p-6">
                 <h2 className="text-xl font-bold mb-4">📝 Add Transaction</h2>
@@ -902,19 +866,26 @@ export default function SMSIncomeTracker() {
                         <Image size={20} />
                         Upload Screenshot
                       </span>
-                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" capture="environment" />
+                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                     </label>
-
                     <p className="text-sm text-gray-600 mt-3">Or paste SMS text below</p>
                   </div>
 
                   {selectedImage && (
                     <div className="mt-4">
-                      <img src={selectedImage} alt="SMS" className="max-w-full h-auto max-h-64 mx-auto rounded-xl border-2 border-blue-200" />
+                      <img
+                        src={selectedImage}
+                        alt="SMS"
+                        className="max-w-full h-auto max-h-64 mx-auto rounded-xl border-2 border-blue-200"
+                      />
                     </div>
                   )}
 
-                  {isProcessingImage && <div className="mt-4 text-center text-sm text-blue-700 font-semibold">Processing image… please wait</div>}
+                  {isProcessingImage && (
+                    <div className="mt-4 text-center text-sm text-blue-700 font-semibold">
+                      Processing image… please wait
+                    </div>
+                  )}
                 </div>
 
                 <textarea
@@ -958,7 +929,6 @@ export default function SMSIncomeTracker() {
               </div>
             </div>
 
-            {/* Transactions */}
             <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-lg p-6">
               <h2 className="text-xl font-bold mb-4">📌 Transactions</h2>
 
@@ -982,7 +952,10 @@ export default function SMSIncomeTracker() {
                           <td className="p-3 whitespace-nowrap font-semibold">{formatNGN(t.amount)}</td>
                           <td className="p-3 whitespace-nowrap">{t.bank || "-"}</td>
                           <td className="p-3 text-right">
-                            <button onClick={() => handleDelete(t.id)} className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-semibold">
+                            <button
+                              onClick={() => handleDelete(t.id)}
+                              className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-semibold"
+                            >
                               <Trash2 size={16} />
                               Delete
                             </button>
