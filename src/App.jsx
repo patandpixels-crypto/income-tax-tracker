@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import logo from "./assets/logo.png";
 import { Plus, Trash2, Download, Image, Upload, LogOut, User } from "lucide-react";
 
-const API_URL = "https://income-tax-tracker.onrender.com";
+const API_URL = "https://income-tax-tracker.onrender.com/api";
 
 function escapeRegExp(str = "") {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
