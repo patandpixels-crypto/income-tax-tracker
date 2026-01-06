@@ -262,6 +262,23 @@ export default function SMSIncomeTracker() {
     }
   }
 
+  function cleanForDetection(text) {
+  if (!text) return "";
+
+  const lines = String(text)
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  // Remove common receipt footers / marketing lines that contain misleading words like "withdrawals"
+  const junkLineRegex =
+    /(enjoy a better life|get free transfers|withdrawals|bill payments|instant loans|annual interest|licensed by|central bank|insured by|ndic)/i;
+
+  const cleaned = lines.filter((l) => !junkLineRegex.test(l));
+
+  return cleaned.join("\n");
+}
+
   function isDebitTransaction(text) {
     const lowerText = text.toLowerCase();
     const criticalKeywords = ["debit", "dr"];
@@ -377,71 +394,79 @@ export default function SMSIncomeTracker() {
     return patterns.some((p) => p.test(text));
   }
 
-  async function processAsCredit() {
-    const newTransaction = parseSMS(smsText);
-    if (newTransaction.amount <= 0) {
-      setError("⚠️ Could not extract valid amount.");
-      return;
-    }
+ async function processAsCredit(textToProcess = smsText) {
+  const newTransaction = parseSMS(textToProcess);
 
-    try {
-      const response = await fetch(`${API_URL}/transactions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(newTransaction),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setTransactions((prev) => [data.transaction, ...prev]);
-        setSmsText("");
-        setSelectedImage(null);
-        setSuccess("✅ Transaction added!");
-        setTimeout(() => setSuccess(""), 3000);
-      } else {
-        const errData = await response.json().catch(() => ({}));
-        setError(errData.error || "Failed to save transaction");
-      }
-    } catch (err) {
-      setError("Failed to save: " + err.message);
-    }
+  if (newTransaction.amount <= 0) {
+    setError("⚠️ Could not extract valid amount.");
+    return;
   }
 
-  async function handleAddTransaction() {
-    setError("");
-    setSuccess("");
+  try {
+    const response = await fetch(`${API_URL}/transactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify(newTransaction),
+    });
 
-    if (!smsText.trim()) {
-      setError("Please enter SMS text");
-      return;
+    if (response.ok) {
+      const data = await response.json();
+      setTransactions([data.transaction, ...transactions]);
+      setSmsText("");
+      setSelectedImage(null);
+      setSuccess("✅ Transaction added!");
+      setTimeout(() => setSuccess(""), 3000);
+    } else {
+      const errData = await response.json().catch(() => ({}));
+      setError(errData.error || "Failed to save transaction");
     }
-
-    if (checkIfUserIsReceiver(smsText)) {
-      await processAsCredit();
-      return;
-    }
-
-    if (checkIfUserIsSender(smsText) || isDebitTransaction(smsText)) {
-      setShowDebitPopup(true);
-      setError("🚫 DEBIT DETECTED! Only credit/income alerts accepted.");
-      setTimeout(() => {
-        setSmsText("");
-        setSelectedImage(null);
-        setError("");
-      }, 4000);
-      return;
-    }
-
-    if (!isCreditTransaction(smsText)) {
-      setError("⚠️ Unable to detect credit keywords.");
-      return;
-    }
-
-    await processAsCredit();
+  } catch (err) {
+    setError("Failed to save: " + err.message);
   }
+}
+
+
+ async function handleAddTransaction() {
+  setError("");
+  setSuccess("");
+
+  if (!smsText.trim()) {
+    setError("Please enter SMS text");
+    return;
+  }
+
+  // ✅ Clean text first (removes footer words like “withdrawals”)
+  const cleanedText = cleanForDetection(smsText);
+
+  const isUserReceiver = checkIfUserIsReceiver(cleanedText);
+  if (isUserReceiver) {
+    await processAsCredit(cleanedText);
+    return;
+  }
+
+  const isUserSender = checkIfUserIsSender(cleanedText);
+  if (isUserSender || isDebitTransaction(cleanedText)) {
+    setShowDebitPopup(true);
+    setError("🚫 DEBIT DETECTED! Only credit/income alerts accepted.");
+    setTimeout(() => {
+      setSmsText("");
+      setSelectedImage(null);
+      setError("");
+    }, 4000);
+    return;
+  }
+
+  if (!isCreditTransaction(cleanedText)) {
+    setError("⚠️ Unable to detect credit keywords.");
+    return;
+  }
+
+  await processAsCredit(cleanedText);
+}
+
 
   async function handleDelete(id) {
     try {
