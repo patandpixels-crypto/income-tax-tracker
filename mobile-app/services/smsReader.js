@@ -1,7 +1,9 @@
-import { Platform, PermissionsAndroid } from 'react-native';
-import SmsAndroid from 'react-native-sms-android';
+import { Platform, PermissionsAndroid, Alert } from 'react-native';
 import { parseTransactionFromText } from '../utils/parser';
 import { transactionAPI } from './api';
+
+// Note: SMS reading requires a custom development build with native modules
+// This is a placeholder implementation for development
 
 // Nigerian bank SMS sender IDs
 const BANK_SENDERS = [
@@ -76,25 +78,15 @@ class SMSReader {
       throw new Error('SMS permissions not granted');
     }
 
-    return new Promise((resolve, reject) => {
-      const filter = {
-        box: 'inbox',
-        maxCount,
-      };
+    // SMS reading requires a custom development build with native modules
+    // For now, return empty array and show info to user
+    Alert.alert(
+      'SMS Reading',
+      'SMS reading requires a custom development build. This feature will be available after building the production app with EAS Build.',
+      [{ text: 'OK' }]
+    );
 
-      SmsAndroid.list(
-        JSON.stringify(filter),
-        (fail) => {
-          console.error('Failed to read SMS:', fail);
-          reject(fail);
-        },
-        (count, smsList) => {
-          const messages = JSON.parse(smsList);
-          const bankMessages = messages.filter(sms => this.isBankSender(sms.address));
-          resolve(bankMessages);
-        }
-      );
-    });
+    return [];
   }
 
   // Process a bank SMS and create transaction if it's a credit
