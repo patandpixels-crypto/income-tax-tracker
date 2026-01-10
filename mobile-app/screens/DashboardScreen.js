@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as ImagePicker from 'expo-image-picker';
+import { parseBankAlert } from '../services/bankAlertParser';
 import api from '../services/api';
 import {
   calculateTax,
@@ -123,7 +124,7 @@ export default function DashboardScreen({ navigation }) {
         return;
       }
 
-      Alert.alert('Processing', 'Extracting text from image...');
+      setLoading(true);
 
       // Extract text from image
       const image = result.assets[0];
@@ -132,20 +133,41 @@ export default function DashboardScreen({ navigation }) {
         image.mimeType || 'image/jpeg'
       );
 
-      if (response.text) {
-        Alert.alert(
-          'Text Extracted',
-          'Bank alert text has been extracted. You can now add it as a transaction via the web app.',
-          [
-            { text: 'OK' }
-          ]
-        );
-      } else {
+      if (!response.text) {
         Alert.alert('No Text Found', 'Could not extract text from the image.');
+        setLoading(false);
+        return;
       }
+
+      // Parse the bank alert text
+      const transactionData = parseBankAlert(response.text);
+
+      if (!transactionData) {
+        Alert.alert(
+          'Could Not Parse',
+          'Could not parse transaction details from the image. Please add it manually via the web app.'
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Create the transaction automatically
+      await api.createTransaction(transactionData);
+
+      // Reload transactions
+      await loadData();
+
+      Alert.alert(
+        'Success!',
+        `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} added successfully!`,
+        [{ text: 'OK' }]
+      );
+
+      setLoading(false);
     } catch (error) {
       console.error('Image upload error:', error);
       Alert.alert('Error', 'Failed to process image: ' + error.message);
+      setLoading(false);
     }
   };
 
