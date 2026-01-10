@@ -142,6 +142,9 @@ export default function DashboardScreen({ navigation }) {
       // Parse the bank alert text
       const transactionData = parseBankAlert(response.text);
 
+      console.log('Extracted text:', response.text);
+      console.log('Parsed transaction:', transactionData);
+
       if (!transactionData) {
         Alert.alert(
           'Could Not Parse',
@@ -151,19 +154,41 @@ export default function DashboardScreen({ navigation }) {
         return;
       }
 
-      // Create the transaction automatically
-      await api.createTransaction(transactionData);
-
-      // Reload transactions
-      await loadData();
-
+      // Show what was detected and ask for confirmation
       Alert.alert(
-        'Success!',
-        `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} added successfully!`,
-        [{ text: 'OK' }]
-      );
+        'Transaction Detected',
+        `Type: ${transactionData.type === 'income' ? 'Income' : 'Expense'}\nAmount: ${formatCurrency(transactionData.amount)}\nBank: ${transactionData.bank}\nDescription: ${transactionData.description}\n\nAdd this transaction?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => setLoading(false),
+          },
+          {
+            text: 'Add',
+            onPress: async () => {
+              try {
+                // Create the transaction
+                await api.createTransaction(transactionData);
 
-      setLoading(false);
+                // Reload transactions
+                await loadData();
+
+                Alert.alert(
+                  'Success!',
+                  `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} added successfully!`,
+                  [{ text: 'OK' }]
+                );
+              } catch (error) {
+                console.error('Create transaction error:', error);
+                Alert.alert('Error', 'Failed to create transaction: ' + error.message);
+              } finally {
+                setLoading(false);
+              }
+            },
+          },
+        ]
+      );
     } catch (error) {
       console.error('Image upload error:', error);
       Alert.alert('Error', 'Failed to process image: ' + error.message);
