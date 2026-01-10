@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   button: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#16a34a', // green-600 to match web app register button
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   link: {
     fontSize: 14,
-    color: '#4CAF50',
+    color: '#2563eb', // blue-600 to match web app
     fontWeight: 'bold',
   },
 });

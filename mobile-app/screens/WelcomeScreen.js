@@ -60,7 +60,7 @@ export default function WelcomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#1e3a8a', // blue-900 to match web app
   },
   content: {
     flex: 1,
@@ -95,10 +95,12 @@ const styles = StyleSheet.create({
   feature: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   featureIcon: {
     fontSize: 32,
@@ -113,7 +115,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   primaryButton: {
-    backgroundColor: '#fff',
+    backgroundColor: '#2563eb', // blue-600 to match web app
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
@@ -125,7 +127,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
   primaryButtonText: {
-    color: '#4CAF50',
+    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
