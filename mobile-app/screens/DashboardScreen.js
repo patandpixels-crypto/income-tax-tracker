@@ -37,8 +37,12 @@ export default function DashboardScreen({ navigation }) {
       const userData = await api.getCurrentUser();
       setUser(userData);
 
-      const transactionsData = await api.getTransactions();
-      console.log('Loaded transactions:', transactionsData);
+      const response = await api.getTransactions();
+      console.log('API Response:', response);
+
+      // Handle response format: {success: true, transactions: [...]}
+      const transactionsData = response.transactions || response;
+      console.log('Transactions data:', transactionsData);
       console.log('Number of transactions:', transactionsData?.length);
 
       const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
@@ -207,15 +211,16 @@ export default function DashboardScreen({ navigation }) {
   };
 
   // Calculate totals
-  const incomeTransactions = transactions.filter((t) => t.type === 'income');
+  // Treat transactions without type as income (default behavior)
+  const incomeTransactions = transactions.filter((t) => !t.type || t.type === 'income');
   console.log('Income transactions:', incomeTransactions);
 
-  const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalIncome = incomeTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
   console.log('Total income calculated:', totalIncome);
 
   const totalExpenses = transactions
     .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + (t.amount || 0), 0);
 
   const annualIncome = totalIncome;
   const taxAmount = calculateTax(annualIncome);
