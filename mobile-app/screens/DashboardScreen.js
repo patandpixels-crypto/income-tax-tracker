@@ -164,10 +164,20 @@ export default function DashboardScreen({ navigation }) {
         return;
       }
 
+      // Reject debit/expense transactions - this is an income tax calculator!
+      if (transactionData.type === 'expense') {
+        Alert.alert(
+          'Debit Transaction Detected',
+          `This appears to be a debit/withdrawal of ${formatCurrency(transactionData.amount)}.\n\nThis is an income tax calculator, so only income/credit transactions can be added.`,
+          [{ text: 'OK', onPress: () => setLoading(false) }]
+        );
+        return;
+      }
+
       // Show what was detected and ask for confirmation
       Alert.alert(
-        'Transaction Detected',
-        `Type: ${transactionData.type === 'income' ? 'Income' : 'Expense'}\nAmount: ${formatCurrency(transactionData.amount)}\nBank: ${transactionData.bank}\nDescription: ${transactionData.description}\n\nAdd this transaction?`,
+        'Income Detected',
+        `Amount: ${formatCurrency(transactionData.amount)}\nBank: ${transactionData.bank}\nDescription: ${transactionData.description}\n\nAdd this income?`,
         [
           {
             text: 'Cancel',
@@ -190,7 +200,7 @@ export default function DashboardScreen({ navigation }) {
 
                 Alert.alert(
                   'Success!',
-                  `${transactionData.type === 'income' ? 'Income' : 'Expense'} of ${formatCurrency(transactionData.amount)} added successfully!`,
+                  `Income of ${formatCurrency(transactionData.amount)} added successfully!`,
                   [{ text: 'OK' }]
                 );
               } catch (error) {
