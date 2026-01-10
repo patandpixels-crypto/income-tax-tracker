@@ -54,47 +54,29 @@ function isDebitTransaction(text) {
   const recipientIndex = lowerText.indexOf('recipient details');
 
   if (senderIndex !== -1 && recipientIndex !== -1) {
-    // In OPay receipts, Sender Details comes AFTER Recipient Details for credits
-    // and BEFORE Recipient Details for debits (in the visual layout)
-    // But in the extracted text, we need to check which appears first
+    // OPay/Bank transfer receipts have both Sender and Recipient
+    // Extract the first name after "Recipient Details"
+    const recipientMatch = text.match(/recipient\s+details[\s\S]{0,100}?([A-Z][A-Z\s]{5,})/i);
 
-    // Better approach: Check if user is mentioned in "Sender" section
-    // If recipient is a business/different person, it's a debit
-    const lines = text.split('\n');
-    let inRecipientSection = false;
-    let inSenderSection = false;
-    let recipientInfo = '';
-    let senderInfo = '';
+    console.log('Recipient match:', recipientMatch);
 
-    for (const line of lines) {
-      if (/recipient\s+details/i.test(line)) {
-        inRecipientSection = true;
-        inSenderSection = false;
-        continue;
-      }
-      if (/sender\s+details/i.test(line)) {
-        inSenderSection = true;
-        inRecipientSection = false;
-        continue;
-      }
-      if (/transaction\s+no/i.test(line)) {
-        inRecipientSection = false;
-        inSenderSection = false;
-      }
+    if (recipientMatch) {
+      const recipientName = recipientMatch[1].trim();
+      console.log('Recipient name extracted:', recipientName);
 
-      if (inRecipientSection && line.trim()) {
-        recipientInfo += line + ' ';
-      }
-      if (inSenderSection && line.trim()) {
-        senderInfo += line + ' ';
-      }
-    }
+      // Check if recipient has business keywords or all-caps business name patterns
+      const businessPatterns = /\b(ltd|limited|intl|international|partnership|company|enterprise|ventures|group|inc|corporation|church|ministry|foundation|ngo|association)\b/i;
 
-    // If sender info contains common user patterns and recipient contains business/organization
-    // This is a transfer OUT (debit)
-    const businessPatterns = /\b(ltd|limited|intl|international|partnership|company|enterprise|ventures|group|inc|corporation|ac|account)\b/i;
-    if (businessPatterns.test(recipientInfo)) {
-      return true; // Sending to a business = debit
+      // Check if it's an all-caps business name (usually 4+ words all caps)
+      const isAllCapsBusinessName = /^[A-Z\s]{10,}$/.test(recipientName) && recipientName.split(/\s+/).length >= 3;
+
+      console.log('Business pattern test:', businessPatterns.test(recipientName));
+      console.log('All caps business name test:', isAllCapsBusinessName);
+
+      if (businessPatterns.test(recipientName) || isAllCapsBusinessName) {
+        console.log('DETECTED AS DEBIT: Sending to business/organization');
+        return true; // Sending to a business = debit
+      }
     }
   }
 
