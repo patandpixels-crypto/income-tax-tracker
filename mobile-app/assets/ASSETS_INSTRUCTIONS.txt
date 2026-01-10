@@ -1,0 +1,51 @@
+ASSET FILES NEEDED FOR THE APP
+=================================
+
+You need to add the following image files to this 'assets' folder:
+
+1. icon.png
+   - Size: 1024 x 1024 pixels
+   - Format: PNG with transparency
+   - Description: Main app icon
+   - Use: This appears as your app icon on the phone
+
+2. splash.png
+   - Size: 1284 x 2778 pixels (or similar)
+   - Format: PNG
+   - Description: Splash screen shown when app loads
+   - Background: White (#ffffff)
+   - Add your app logo/name in the center
+
+3. adaptive-icon.png
+   - Size: 1024 x 1024 pixels
+   - Format: PNG with transparency
+   - Description: Android adaptive icon
+   - Note: Should work on colored backgrounds
+
+4. favicon.png
+   - Size: 48 x 48 pixels (or 16x16, 32x32)
+   - Format: PNG
+   - Description: Web favicon (for Expo web)
+
+TEMPORARY SOLUTION:
+------------------
+For now, the app will use Expo's default assets. The app will still run fine without custom assets.
+
+WHERE TO CREATE THESE IMAGES:
+----------------------------
+You can use free tools like:
+- Canva.com (easiest for beginners)
+- Figma.com (more professional)
+- Remove.bg (for transparent backgrounds)
+
+SIMPLE DESIGN IDEAS:
+-------------------
+- Green background with ₦ (Naira symbol)
+- Calculator icon with money symbol
+- Simple text: "Tax Tracker"
+- Use your brand colors (green #4CAF50)
+
+IMPORTANT:
+----------
+You can run and test the app RIGHT NOW without creating these assets.
+The app will work perfectly with Expo's default images.

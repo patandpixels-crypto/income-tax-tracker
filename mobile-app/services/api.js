@@ -3,50 +3,84 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = 'https://income-tax-tracker.onrender.com/api';
 
-const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+class ApiService {
+  constructor() {
+    this.api = axios.create({
+      baseURL: API_URL,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-// Add token to requests
-api.interceptors.request.use(
-  async (config) => {
-    const token = await AsyncStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Add token to requests
+    this.api.interceptors.request.use(
+      async (config) => {
+        const token = await AsyncStorage.getItem('userToken');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  // Auth endpoints
+  async login(email, password) {
+    const response = await this.api.post('/auth/login', { email, password });
+    if (response.data.token) {
+      await AsyncStorage.setItem('userToken', response.data.token);
+      await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
     }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+    return response.data;
+  }
 
-// Auth API
-export const authAPI = {
-  register: (email, password, name) =>
-    api.post('/auth/register', { email, password, name }),
+  async register(name, email, password) {
+    const response = await this.api.post('/auth/register', { name, email, password });
+    if (response.data.token) {
+      await AsyncStorage.setItem('userToken', response.data.token);
+      await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  }
 
-  login: (email, password) =>
-    api.post('/auth/login', { email, password }),
+  async logout() {
+    await AsyncStorage.removeItem('userToken');
+    await AsyncStorage.removeItem('userData');
+  }
 
-  getProfile: () =>
-    api.get('/auth/me'),
+  async getCurrentUser() {
+    const userData = await AsyncStorage.getItem('userData');
+    return userData ? JSON.parse(userData) : null;
+  }
 
-  updateBankName: (bankAlertName) =>
-    api.put('/auth/bank-name', { bankAlertName }),
-};
+  async isAuthenticated() {
+    const token = await AsyncStorage.getItem('userToken');
+    return !!token;
+  }
 
-// Transaction API
-export const transactionAPI = {
-  getAll: () =>
-    api.get('/transactions'),
+  // Transaction endpoints
+  async getTransactions() {
+    const response = await this.api.get('/transactions');
+    return response.data;
+  }
 
-  create: (transaction) =>
-    api.post('/transactions', transaction),
+  async createTransaction(transactionData) {
+    const response = await this.api.post('/transactions', transactionData);
+    return response.data;
+  }
 
-  delete: (id) =>
-    api.delete(`/transactions/${id}`),
-};
+  async updateTransaction(id, transactionData) {
+    const response = await this.api.put(`/transactions/${id}`, transactionData);
+    return response.data;
+  }
 
-export default api;
+  async deleteTransaction(id) {
+    const response = await this.api.delete(`/transactions/${id}`);
+    return response.data;
+  }
+}
+
+export default new ApiService();

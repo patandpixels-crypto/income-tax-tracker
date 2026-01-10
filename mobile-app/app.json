@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Income Tax Tracker",
-    "slug": "income-tax-tracker-mobile",
+    "slug": "income-tax-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,26 +16,21 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.incometaxtracker.mobile"
+      "bundleIdentifier": "com.incometaxtracker.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.incometaxtracker.app",
       "permissions": [
-        "android.permission.READ_SMS",
-        "android.permission.RECEIVE_SMS",
-        "android.permission.READ_PHONE_STATE"
-      ],
-      "package": "com.incometaxtracker.mobile"
+        "READ_SMS",
+        "RECEIVE_SMS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      "expo-router"
-    ],
-    "scheme": "income-tax-tracker"
+    }
   }
 }
