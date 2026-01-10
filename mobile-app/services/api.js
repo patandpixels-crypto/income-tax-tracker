@@ -81,6 +81,15 @@ class ApiService {
     const response = await this.api.delete(`/transactions/${id}`);
     return response.data;
   }
+
+  // Image text extraction
+  async extractTextFromImage(imageData, mediaType) {
+    const response = await this.api.post('/extract-text', {
+      imageData,
+      mediaType
+    });
+    return response.data;
+  }
 }
 
 export default new ApiService();

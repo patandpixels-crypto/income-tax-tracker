@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as ImagePicker from 'expo-image-picker';
 import api from '../services/api';
 import {
   calculateTax,
@@ -61,6 +64,89 @@ export default function DashboardScreen({ navigation }) {
         },
       },
     ]);
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      if (transactions.length === 0) {
+        Alert.alert('No Data', 'There are no transactions to export.');
+        return;
+      }
+
+      // Generate CSV content
+      let csv = 'Date,Amount,Description,Type,Bank\n';
+      transactions.forEach((t) => {
+        const desc = (t.description || '').replace(/"/g, '""');
+        const type = t.type || 'income';
+        const bank = t.bank || '';
+        csv += `${t.date},${t.amount},"${desc}",${type},${bank}\n`;
+      });
+
+      // Save to file
+      const fileUri = `${FileSystem.documentDirectory}income-tax-${Date.now()}.csv`;
+      await FileSystem.writeAsStringAsync(fileUri, csv, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      // Share the file
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri);
+        Alert.alert('Success', 'CSV file exported successfully!');
+      } else {
+        Alert.alert('Error', 'Sharing is not available on this device');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      Alert.alert('Error', 'Failed to export CSV: ' + error.message);
+    }
+  };
+
+  const handleUploadImage = async () => {
+    try {
+      // Request permission
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photos to upload bank alerts.');
+        return;
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      Alert.alert('Processing', 'Extracting text from image...');
+
+      // Extract text from image
+      const image = result.assets[0];
+      const response = await api.extractTextFromImage(
+        image.base64,
+        image.mimeType || 'image/jpeg'
+      );
+
+      if (response.text) {
+        Alert.alert(
+          'Text Extracted',
+          'Bank alert text has been extracted. You can now add it as a transaction via the web app.',
+          [
+            { text: 'OK' }
+          ]
+        );
+      } else {
+        Alert.alert('No Text Found', 'Could not extract text from the image.');
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      Alert.alert('Error', 'Failed to process image: ' + error.message);
+    }
   };
 
   // Calculate totals
@@ -136,6 +222,24 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.statLabel}>Expenses</Text>
             <Text style={styles.statAmount}>{formatCurrency(totalExpenses)}</Text>
           </View>
+        </View>
+
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleUploadImage}
+          >
+            <Text style={styles.actionButtonIcon}>📸</Text>
+            <Text style={styles.actionButtonText}>Upload Bank Alert</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleExportCSV}
+          >
+            <Text style={styles.actionButtonIcon}>📊</Text>
+            <Text style={styles.actionButtonText}>Export CSV</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.infoCard}>
@@ -313,6 +417,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#2563eb',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  actionButtonIcon: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   infoCard: {
     backgroundColor: '#E3F2FD',
