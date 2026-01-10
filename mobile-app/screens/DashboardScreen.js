@@ -38,7 +38,13 @@ export default function DashboardScreen({ navigation }) {
       setUser(userData);
 
       const transactionsData = await api.getTransactions();
-      setTransactions(Array.isArray(transactionsData) ? transactionsData : []);
+      console.log('Loaded transactions:', transactionsData);
+      console.log('Number of transactions:', transactionsData?.length);
+
+      const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+      setTransactions(transactionsArray);
+
+      console.log('Transactions set to state:', transactionsArray.length);
     } catch (error) {
       console.error('Error loading data:', error);
       setTransactions([]);
@@ -169,10 +175,14 @@ export default function DashboardScreen({ navigation }) {
             onPress: async () => {
               try {
                 // Create the transaction
-                await api.createTransaction(transactionData);
+                console.log('Creating transaction:', transactionData);
+                const createdTransaction = await api.createTransaction(transactionData);
+                console.log('Transaction created:', createdTransaction);
 
                 // Reload transactions
+                console.log('Reloading transactions...');
                 await loadData();
+                console.log('Transactions reloaded');
 
                 Alert.alert(
                   'Success!',
@@ -197,9 +207,11 @@ export default function DashboardScreen({ navigation }) {
   };
 
   // Calculate totals
-  const totalIncome = transactions
-    .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
+  const incomeTransactions = transactions.filter((t) => t.type === 'income');
+  console.log('Income transactions:', incomeTransactions);
+
+  const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+  console.log('Total income calculated:', totalIncome);
 
   const totalExpenses = transactions
     .filter((t) => t.type === 'expense')
