@@ -34,9 +34,10 @@ export default function DashboardScreen({ navigation }) {
       setUser(userData);
 
       const transactionsData = await api.getTransactions();
-      setTransactions(transactionsData);
+      setTransactions(Array.isArray(transactionsData) ? transactionsData : []);
     } catch (error) {
       console.error('Error loading data:', error);
+      setTransactions([]);
     } finally {
       setLoading(false);
     }
