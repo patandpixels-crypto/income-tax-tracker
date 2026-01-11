@@ -21,7 +21,7 @@ import {
   calculateTax,
   calculateNetIncome,
   formatCurrency,
-  getTaxBracket,
+  getEffectiveRate,
 } from '../services/taxCalculator';
 
 export default function DashboardScreen({ navigation }) {
@@ -259,7 +259,7 @@ export default function DashboardScreen({ navigation }) {
   const annualIncome = totalIncome;
   const taxAmount = calculateTax(annualIncome);
   const netIncome = calculateNetIncome(annualIncome);
-  const taxRate = getTaxBracket(annualIncome);
+  const taxRate = getEffectiveRate(annualIncome);
 
   if (loading) {
     return (
