@@ -75,6 +75,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="John Doe"
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
@@ -86,6 +87,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="your.email@example.com"
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -99,6 +101,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="At least 6 characters"
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -111,6 +114,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Re-enter your password"
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -146,7 +150,7 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#4338CA',
   },
   scrollContent: {
     flexGrow: 1,
@@ -162,12 +166,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#fff',
+    opacity: 0.8,
   },
   form: {
     width: '100%',
@@ -178,21 +183,22 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#fff',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    color: '#fff',
   },
   button: {
-    backgroundColor: '#16a34a', // green-600 to match web app register button
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#FBBF24',
+    padding: 20,
+    borderRadius: 20,
     alignItems: 'center',
     marginTop: 12,
     elevation: 2,
@@ -205,7 +211,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    color: '#fff',
+    color: '#000',
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -216,11 +222,12 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#666',
+    color: '#fff',
+    opacity: 0.8,
   },
   link: {
     fontSize: 14,
-    color: '#2563eb', // blue-600 to match web app
+    color: '#FBBF24',
     fontWeight: 'bold',
   },
 });

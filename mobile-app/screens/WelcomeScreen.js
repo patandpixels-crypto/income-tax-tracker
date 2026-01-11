@@ -60,7 +60,7 @@ export default function WelcomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e3a8a', // blue-900 to match web app
+    backgroundColor: '#4338CA',
   },
   content: {
     flex: 1,
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
@@ -86,8 +86,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#fff',
     textAlign: 'center',
-    opacity: 0.9,
+    opacity: 0.8,
     paddingHorizontal: 20,
+    lineHeight: 24,
   },
   features: {
     marginTop: 40,
@@ -95,49 +96,49 @@ const styles = StyleSheet.create({
   feature: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   featureIcon: {
-    fontSize: 32,
+    fontSize: 36,
     marginRight: 16,
   },
   featureText: {
     fontSize: 16,
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   buttonContainer: {
     marginBottom: 20,
   },
   primaryButton: {
-    backgroundColor: '#2563eb', // blue-600 to match web app
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#FBBF24',
+    padding: 20,
+    borderRadius: 20,
     alignItems: 'center',
-    marginBottom: 12,
-    elevation: 3,
+    marginBottom: 16,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: '#000',
     fontSize: 18,
     fontWeight: 'bold',
   },
   secondaryButton: {
-    backgroundColor: 'transparent',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 20,
+    borderRadius: 20,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   secondaryButtonText: {
     color: '#fff',
