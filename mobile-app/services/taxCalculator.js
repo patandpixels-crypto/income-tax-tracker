@@ -1,26 +1,29 @@
-// Nigerian Tax Brackets for 2024
+// Nigerian Tax Brackets - Progressive Taxation
 const TAX_BRACKETS = [
-  { min: 0, max: 300000, rate: 0.07, deduction: 0 },
-  { min: 300000, max: 600000, rate: 0.11, deduction: 12000 },
-  { min: 600000, max: 1100000, rate: 0.15, deduction: 36000 },
-  { min: 1100000, max: 1600000, rate: 0.19, deduction: 80000 },
-  { min: 1600000, max: 3200000, rate: 0.21, deduction: 112000 },
-  { min: 3200000, max: Infinity, rate: 0.24, deduction: 208000 },
+  { limit: 800000, rate: 0 },
+  { limit: 3000000, rate: 0.15 },
+  { limit: 12000000, rate: 0.18 },
+  { limit: 25000000, rate: 0.21 },
+  { limit: 50000000, rate: 0.23 },
+  { limit: Infinity, rate: 0.25 },
 ];
 
-export function calculateTax(grossIncome) {
-  if (grossIncome <= 0) return 0;
+export function calculateTax(income) {
+  if (income <= 0) return 0;
 
-  // Find the applicable tax bracket
-  const bracket = TAX_BRACKETS.find(
-    (b) => grossIncome > b.min && grossIncome <= b.max
-  );
+  let tax = 0;
+  let previousLimit = 0;
 
-  if (!bracket) return 0;
-
-  // Calculate tax: (Income × Rate) - Deduction
-  const tax = grossIncome * bracket.rate - bracket.deduction;
-  return Math.max(0, tax);
+  for (const bracket of TAX_BRACKETS) {
+    if (income <= bracket.limit) {
+      tax += Math.max(0, income - previousLimit) * bracket.rate;
+      break;
+    } else {
+      tax += (bracket.limit - previousLimit) * bracket.rate;
+      previousLimit = bracket.limit;
+    }
+  }
+  return tax;
 }
 
 export function calculateNetIncome(grossIncome) {
@@ -40,9 +43,8 @@ export function calculateMonthlyTax(annualIncome) {
   return annualTax / 12;
 }
 
-export function getTaxBracket(income) {
-  const bracket = TAX_BRACKETS.find(
-    (b) => income > b.min && income <= b.max
-  );
-  return bracket ? bracket.rate * 100 : 0;
+export function getEffectiveRate(income) {
+  if (income <= 0) return 0;
+  const tax = calculateTax(income);
+  return (tax / income) * 100;
 }
