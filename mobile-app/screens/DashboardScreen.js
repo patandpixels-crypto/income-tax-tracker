@@ -12,6 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as ImagePicker from 'expo-image-picker';
@@ -263,14 +264,18 @@ export default function DashboardScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-      </View>
+      <LinearGradient
+        colors={['#4338CA', '#2D1B69']}
+        style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FBBF24" />
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={['#4338CA', '#2D1B69']}
+      style={styles.container}>
       <StatusBar style="light" />
       <ScrollView
         style={styles.scrollView}
@@ -454,20 +459,18 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#4338CA',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#4338CA',
   },
   scrollView: {
     flex: 1,
@@ -553,8 +556,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   taxCard: {
     backgroundColor: 'rgba(251, 191, 36, 0.2)',
@@ -617,8 +618,6 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 20,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   infoTitle: {
     fontSize: 18,
@@ -647,8 +646,6 @@ const styles = StyleSheet.create({
     padding: 40,
     borderRadius: 20,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   emptyIcon: {
     fontSize: 56,
@@ -679,8 +676,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   transactionLeft: {
     flexDirection: 'row',
@@ -717,8 +712,6 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 20,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.3)',
   },
   setBankNameText: {
     fontSize: 14,
@@ -734,8 +727,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.3)',
   },
   bankNameLabel: {
     fontSize: 14,
@@ -760,8 +751,6 @@ const styles = StyleSheet.create({
     padding: 28,
     width: '100%',
     maxWidth: 400,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   modalTitle: {
     fontSize: 24,
@@ -782,8 +771,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     fontSize: 16,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
     color: '#fff',
   },
   modalButtons: {
@@ -796,8 +783,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   modalCancelText: {
     fontSize: 16,

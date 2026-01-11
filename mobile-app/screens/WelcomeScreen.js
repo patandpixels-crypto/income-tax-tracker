@@ -8,12 +8,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function WelcomeScreen({ navigation }) {
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
-      <View style={styles.content}>
+    <LinearGradient
+      colors={['#4338CA', '#2D1B69']}
+      style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar style="light" />
+        <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.logo}>💰</Text>
           <Text style={styles.title}>Income Tax Tracker</Text>
@@ -53,14 +57,17 @@ export default function WelcomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#4338CA',
+  },
+  safeArea: {
+    flex: 1,
   },
   content: {
     flex: 1,
@@ -100,8 +107,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 20,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   featureIcon: {
     fontSize: 36,
@@ -137,8 +142,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 20,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   secondaryButtonText: {
     color: '#fff',

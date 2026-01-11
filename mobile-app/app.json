@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1e3a8a"
+      "backgroundColor": "#4338CA"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -21,7 +21,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#1e3a8a"
+        "backgroundColor": "#4338CA"
       },
       "package": "com.incometaxtracker.app",
       "permissions": [
