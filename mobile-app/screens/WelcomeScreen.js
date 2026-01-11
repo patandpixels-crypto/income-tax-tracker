@@ -12,9 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function WelcomeScreen({ navigation }) {
   return (
-    <LinearGradient
-      colors={['#4338CA', '#2D1B69']}
-      style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar style="light" />
         <View style={styles.content}>
@@ -58,13 +56,14 @@ export default function WelcomeScreen({ navigation }) {
         </View>
       </View>
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
   },
   safeArea: {
     flex: 1,
