@@ -17,7 +17,7 @@ export default function WelcomeScreen({ navigation }) {
         <StatusBar style="light" />
         <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.logo}>💰</Text>
+          <Image source={require('../assets/icon.png')} style={styles.logo} />
           <Text style={styles.title}>Income Tax Tracker</Text>
           <Text style={styles.subtitle}>
             Track your income and calculate your Nigerian tax obligations
@@ -78,7 +78,8 @@ const styles = StyleSheet.create({
     marginTop: 60,
   },
   logo: {
-    fontSize: 80,
+    width: 120,
+    height: 120,
     marginBottom: 20,
   },
   title: {
