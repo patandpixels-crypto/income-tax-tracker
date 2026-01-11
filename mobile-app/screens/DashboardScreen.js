@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   summaryCard: {
-    backgroundColor: '#5B21B6',
+    backgroundColor: 'rgba(91, 33, 182, 0.3)',
     margin: 16,
     padding: 32,
     borderRadius: 24,
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(139, 92, 246, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     padding: 20,
     borderRadius: 20,
     marginHorizontal: 4,
@@ -558,16 +558,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   taxCard: {
-    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+    backgroundColor: 'rgba(251, 191, 36, 0.08)',
   },
   netCard: {
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
   },
   incomeCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
   },
   expenseCard: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
   },
   statIcon: {
     fontSize: 28,
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   infoCard: {
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    backgroundColor: 'rgba(139, 92, 246, 0.08)',
     margin: 16,
     padding: 20,
     borderRadius: 20,
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyState: {
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    backgroundColor: 'rgba(139, 92, 246, 0.08)',
     padding: 40,
     borderRadius: 20,
     alignItems: 'center',
@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    backgroundColor: 'rgba(139, 92, 246, 0.08)',
     padding: 20,
     borderRadius: 20,
     marginBottom: 12,
@@ -708,7 +708,7 @@ const styles = StyleSheet.create({
     color: '#EF4444',
   },
   setBankNameButton: {
-    backgroundColor: 'rgba(251, 191, 36, 0.2)',
+    backgroundColor: 'rgba(251, 191, 36, 0.08)',
     margin: 16,
     padding: 20,
     borderRadius: 20,
@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   bankNameDisplay: {
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    backgroundColor: 'rgba(34, 197, 94, 0.08)',
     margin: 16,
     padding: 16,
     borderRadius: 20,
@@ -746,7 +746,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#5B21B6',
+    backgroundColor: 'rgba(91, 33, 182, 0.95)',
     borderRadius: 24,
     padding: 28,
     width: '100%',

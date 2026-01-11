@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   feature: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    backgroundColor: 'rgba(139, 92, 246, 0.08)',
     padding: 20,
     borderRadius: 20,
     marginBottom: 16,
