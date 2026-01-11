@@ -4,16 +4,25 @@
     "slug": "income-tax-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#1e3a8a"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.incometaxtracker.app"
     },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#1e3a8a"
+      },
       "package": "com.incometaxtracker.app",
       "permissions": [
         "READ_SMS",
