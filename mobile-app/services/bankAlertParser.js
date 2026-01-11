@@ -1,14 +1,18 @@
 // Bank Alert Parser for Nigerian Banks
 // Based on the web app's parsing logic
 
-export function parseBankAlert(text) {
+function escapeRegExp(str = "") {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export function parseBankAlert(text, userName = null) {
   if (!text) return null;
 
   // Clean the text
   const cleanedText = cleanForDetection(text);
 
   // Check if it's a debit transaction
-  const isDebit = isDebitTransaction(cleanedText);
+  const isDebit = isDebitTransaction(cleanedText, userName);
 
   // Extract amount
   const amount = extractAmount(cleanedText);
@@ -45,17 +49,34 @@ function cleanForDetection(text) {
   return cleaned.join('\n');
 }
 
-function isDebitTransaction(text) {
+function isDebitTransaction(text, userName = null) {
   const lowerText = text.toLowerCase();
 
-  // Check for OPay/Transfer receipts pattern
-  // If "Sender Details" appears BEFORE "Recipient Details", user is sending money (debit)
+  // If user has saved their bank alert name, check if they are the sender
+  if (userName) {
+    const namePattern = new RegExp(escapeRegExp(userName), 'i');
+
+    // Check if user's name appears in Sender Details section
+    const senderMatch = text.match(/sender\s+details[\s\S]{0,200}/i);
+    if (senderMatch && namePattern.test(senderMatch[0])) {
+      console.log('DETECTED AS DEBIT: User is the sender');
+      return true; // User is sending money = debit
+    }
+
+    // Check if user's name appears in Recipient Details section
+    const recipientMatch = text.match(/recipient\s+details[\s\S]{0,200}/i);
+    if (recipientMatch && namePattern.test(recipientMatch[0])) {
+      console.log('DETECTED AS CREDIT: User is the recipient');
+      return false; // User is receiving money = credit
+    }
+  }
+
+  // Fallback: Check for OPay/Transfer receipts pattern
   const senderIndex = lowerText.indexOf('sender details');
   const recipientIndex = lowerText.indexOf('recipient details');
 
   if (senderIndex !== -1 && recipientIndex !== -1) {
-    // OPay/Bank transfer receipts have both Sender and Recipient
-    // Extract the first name after "Recipient Details"
+    // Extract recipient name for business detection
     const recipientMatch = text.match(/recipient\s+details[\s\S]{0,100}?([A-Z][A-Z\s]{5,})/i);
 
     console.log('Recipient match:', recipientMatch);

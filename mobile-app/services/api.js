@@ -56,6 +56,14 @@ class ApiService {
     return userData ? JSON.parse(userData) : null;
   }
 
+  async updateBankAlertName(name) {
+    const response = await this.api.put('/auth/bank-name', { bankAlertName: name });
+    if (response.data.user) {
+      await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  }
+
   async isAuthenticated() {
     const token = await AsyncStorage.getItem('userToken');
     return !!token;

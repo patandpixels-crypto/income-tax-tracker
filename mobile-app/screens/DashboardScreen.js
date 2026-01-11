@@ -8,6 +8,8 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  TextInput,
+  Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as FileSystem from 'expo-file-system';
@@ -27,6 +29,8 @@ export default function DashboardScreen({ navigation }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showNameInput, setShowNameInput] = useState(false);
+  const [tempName, setTempName] = useState('');
 
   useEffect(() => {
     loadData();
@@ -75,6 +79,23 @@ export default function DashboardScreen({ navigation }) {
         },
       },
     ]);
+  };
+
+  const handleSaveBankAlertName = async () => {
+    if (!tempName.trim()) {
+      Alert.alert('Error', 'Please enter your name as it appears on bank alerts');
+      return;
+    }
+
+    try {
+      await api.updateBankAlertName(tempName);
+      const updatedUser = await api.getCurrentUser();
+      setUser(updatedUser);
+      setShowNameInput(false);
+      Alert.alert('Success', 'Bank alert name saved successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save name: ' + error.message);
+    }
   };
 
   const handleExportCSV = async () => {
@@ -149,8 +170,11 @@ export default function DashboardScreen({ navigation }) {
         return;
       }
 
-      // Parse the bank alert text
-      const transactionData = parseBankAlert(response.text);
+      // Parse the bank alert text with user's bank alert name
+      const userName = user?.bankAlertName || null;
+      console.log('Using bank alert name:', userName);
+
+      const transactionData = parseBankAlert(response.text, userName);
 
       console.log('Extracted text:', response.text);
       console.log('Parsed transaction:', transactionData);
@@ -270,6 +294,34 @@ export default function DashboardScreen({ navigation }) {
           <Text style={styles.taxBracket}>Tax Bracket: {taxRate}%</Text>
         </View>
 
+        {!user?.bankAlertName && (
+          <TouchableOpacity
+            style={styles.setBankNameButton}
+            onPress={() => {
+              setTempName('');
+              setShowNameInput(true);
+            }}
+          >
+            <Text style={styles.setBankNameText}>
+              ⚠️ Set Your Bank Alert Name for Better Detection
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {user?.bankAlertName && (
+          <View style={styles.bankNameDisplay}>
+            <Text style={styles.bankNameLabel}>Bank Alert Name: {user.bankAlertName}</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setTempName(user.bankAlertName);
+                setShowNameInput(true);
+              }}
+            >
+              <Text style={styles.editNameText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.taxCard]}>
             <Text style={styles.statIcon}>💰</Text>
@@ -367,6 +419,43 @@ export default function DashboardScreen({ navigation }) {
           )}
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showNameInput}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowNameInput(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Set Bank Alert Name</Text>
+            <Text style={styles.modalSubtitle}>
+              Enter your name exactly as it appears on your bank alerts (e.g., PATRICK CHIDOZIE)
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              value={tempName}
+              onChangeText={setTempName}
+              placeholder="YOUR NAME"
+              autoCapitalize="characters"
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => setShowNameInput(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSaveButton}
+                onPress={handleSaveBankAlertName}
+              >
+                <Text style={styles.modalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -611,5 +700,103 @@ const styles = StyleSheet.create({
   },
   expenseAmount: {
     color: '#F44336',
+  },
+  setBankNameButton: {
+    backgroundColor: '#FFF3CD',
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFC107',
+  },
+  setBankNameText: {
+    fontSize: 14,
+    color: '#856404',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  bankNameDisplay: {
+    backgroundColor: '#D4EDDA',
+    margin: 16,
+    padding: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    borderLeftColor: '#28A745',
+  },
+  bankNameLabel: {
+    fontSize: 14,
+    color: '#155724',
+    fontWeight: '600',
+  },
+  editNameText: {
+    fontSize: 14,
+    color: '#2563eb',
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalInput: {
+    backgroundColor: '#f5f5f5',
+    padding: 16,
+    borderRadius: 12,
+    fontSize: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalCancelButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  modalSaveButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+  },
+  modalSaveText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 });
