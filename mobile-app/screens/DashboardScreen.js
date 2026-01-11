@@ -406,12 +406,9 @@ export default function DashboardScreen({ navigation }) {
                 <Text
                   style={[
                     styles.transactionAmount,
-                    transaction.type === 'income'
-                      ? styles.incomeAmount
-                      : styles.expenseAmount,
+                    styles.incomeAmount,
                   ]}
                 >
-                  {transaction.type === 'income' ? '+' : '-'}
                   {formatCurrency(transaction.amount)}
                 </Text>
               </View>
