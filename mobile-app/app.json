@@ -28,6 +28,11 @@
         "READ_SMS",
         "RECEIVE_SMS"
       ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e4a836ef-186c-4604-baa4-2aef91a5457a"
+      }
     }
   }
 }
