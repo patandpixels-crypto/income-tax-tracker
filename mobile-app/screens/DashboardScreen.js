@@ -264,19 +264,15 @@ export default function DashboardScreen({ navigation }) {
 
   if (loading) {
     return (
-      <LinearGradient
-        colors={['#4338CA', '#2D1B69']}
-        style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FBBF24" />
-      </LinearGradient>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
     );
   }
 
   return (
-    <LinearGradient
-      colors={['#4338CA', '#2D1B69']}
-      style={styles.container}>
-      <StatusBar style="light" />
+    <View style={styles.container}>
+      <StatusBar style="dark" />
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -439,7 +435,7 @@ export default function DashboardScreen({ navigation }) {
               value={tempName}
               onChangeText={setTempName}
               placeholder="YOUR NAME"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              placeholderTextColor="#9CA3AF"
               autoCapitalize="characters"
             />
             <View style={styles.modalButtons}>
@@ -459,18 +455,20 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8F9FA',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F8F9FA',
   },
   scrollView: {
     flex: 1,
@@ -480,26 +478,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#4338CA',
+    backgroundColor: '#FFFFFF',
     paddingTop: 50,
     paddingBottom: 30,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   greeting: {
     fontSize: 16,
-    color: '#fff',
-    opacity: 0.8,
+    color: '#6B7280',
     marginBottom: 4,
   },
   userName: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#111827',
   },
   logoutButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: '#EF4444',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   logoutText: {
     color: '#fff',
@@ -507,13 +514,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   summaryCard: {
-    backgroundColor: 'rgba(91, 33, 182, 0.3)',
+    backgroundColor: '#8B5CF6',
     margin: 16,
     padding: 32,
     borderRadius: 24,
     alignItems: 'center',
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: '#8B5CF6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -521,7 +528,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     color: '#fff',
-    opacity: 0.8,
     marginBottom: 12,
     fontWeight: '600',
   },
@@ -533,12 +539,12 @@ const styles = StyleSheet.create({
   },
   taxBracket: {
     fontSize: 14,
-    color: '#fff',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    color: '#8B5CF6',
+    backgroundColor: '#fff',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   statsGrid: {
     flexDirection: 'row',
@@ -547,27 +553,26 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     padding: 20,
     borderRadius: 20,
     marginHorizontal: 4,
-    elevation: 4,
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   taxCard: {
-    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+    backgroundColor: '#FF9500',
   },
   netCard: {
-    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    backgroundColor: '#34C759',
   },
   incomeCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    backgroundColor: '#007AFF',
   },
   expenseCard: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    backgroundColor: '#FF3B30',
   },
   statIcon: {
     fontSize: 28,
@@ -576,7 +581,6 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: '#fff',
-    opacity: 0.8,
     marginBottom: 6,
     fontWeight: '600',
   },
@@ -597,11 +601,11 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 20,
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+    shadowColor: '#FBBF24',
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowRadius: 6,
   },
   actionButtonIcon: {
     fontSize: 32,
@@ -614,21 +618,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   infoCard: {
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    backgroundColor: '#E0E7FF',
     margin: 16,
     padding: 20,
     borderRadius: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   infoTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#4338CA',
     marginBottom: 8,
   },
   infoText: {
     fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
+    color: '#4B5563',
     lineHeight: 22,
   },
   recentTransactions: {
@@ -638,14 +646,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#111827',
     marginBottom: 16,
   },
   emptyState: {
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    backgroundColor: '#FFFFFF',
     padding: 40,
     borderRadius: 20,
     alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   emptyIcon: {
     fontSize: 56,
@@ -654,27 +667,26 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: '#111827',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#fff',
-    opacity: 0.7,
+    color: '#6B7280',
     textAlign: 'center',
   },
   transactionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 20,
     marginBottom: 12,
-    elevation: 2,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   transactionLeft: {
@@ -689,13 +701,12 @@ const styles = StyleSheet.create({
   transactionDescription: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: '#111827',
     marginBottom: 4,
   },
   transactionDate: {
     fontSize: 12,
-    color: '#fff',
-    opacity: 0.7,
+    color: '#6B7280',
   },
   transactionAmount: {
     fontSize: 18,
@@ -708,34 +719,44 @@ const styles = StyleSheet.create({
     color: '#EF4444',
   },
   setBankNameButton: {
-    backgroundColor: 'rgba(251, 191, 36, 0.08)',
+    backgroundColor: '#FEF3C7',
     margin: 16,
     padding: 20,
     borderRadius: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   setBankNameText: {
     fontSize: 14,
-    color: '#FBBF24',
+    color: '#D97706',
     fontWeight: '700',
     textAlign: 'center',
   },
   bankNameDisplay: {
-    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+    backgroundColor: '#D1FAE5',
     margin: 16,
     padding: 16,
     borderRadius: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   bankNameLabel: {
     fontSize: 14,
-    color: '#fff',
+    color: '#065F46',
     fontWeight: '600',
   },
   editNameText: {
     fontSize: 14,
-    color: '#FBBF24',
+    color: '#DC2626',
     fontWeight: 'bold',
   },
   modalOverlay: {
@@ -746,32 +767,38 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: 'rgba(91, 33, 182, 0.95)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 28,
     width: '100%',
     maxWidth: 400,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#111827',
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
+    color: '#6B7280',
     marginBottom: 20,
     lineHeight: 22,
   },
   modalInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#F3F4F6',
     padding: 16,
     borderRadius: 16,
     fontSize: 16,
     marginBottom: 20,
-    color: '#fff',
+    color: '#111827',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   modalButtons: {
     flexDirection: 'row',
@@ -781,13 +808,13 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#E5E7EB',
     alignItems: 'center',
   },
   modalCancelText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#fff',
+    color: '#374151',
   },
   modalSaveButton: {
     flex: 1,

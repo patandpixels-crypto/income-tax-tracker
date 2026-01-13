@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
 import api from '../services/api';
 
 export default function RegisterScreen({ navigation }) {
@@ -58,14 +57,12 @@ export default function RegisterScreen({ navigation }) {
   };
 
   return (
-    <LinearGradient
-      colors={['#4338CA', '#2D1B69']}
-      style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <View style={styles.header}>
@@ -79,7 +76,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="John Doe"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                placeholderTextColor="#9CA3AF"
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
@@ -91,7 +88,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="your.email@example.com"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                placeholderTextColor="#9CA3AF"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -105,7 +102,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="At least 6 characters"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                placeholderTextColor="#9CA3AF"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -118,7 +115,7 @@ export default function RegisterScreen({ navigation }) {
               <TextInput
                 style={styles.input}
                 placeholder="Re-enter your password"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                placeholderTextColor="#9CA3AF"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -148,13 +145,14 @@ export default function RegisterScreen({ navigation }) {
         </View>
       </ScrollView>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8F9FA',
   },
   keyboardView: {
     flex: 1,
@@ -173,13 +171,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#111827',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#fff',
-    opacity: 0.8,
+    color: '#6B7280',
   },
   form: {
     width: '100%',
@@ -190,33 +187,40 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
+    color: '#374151',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 16,
     fontSize: 16,
-    color: '#fff',
+    color: '#111827',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   button: {
-    backgroundColor: '#FBBF24',
+    backgroundColor: '#8B5CF6',
     padding: 20,
     borderRadius: 20,
     alignItems: 'center',
     marginTop: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    elevation: 6,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: '#000',
+    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
@@ -227,12 +231,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
+    color: '#6B7280',
   },
   link: {
     fontSize: 14,
-    color: '#FBBF24',
+    color: '#8B5CF6',
     fontWeight: 'bold',
   },
 });

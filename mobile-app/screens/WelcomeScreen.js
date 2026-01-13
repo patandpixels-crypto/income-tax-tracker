@@ -8,13 +8,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
 
 export default function WelcomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <View style={styles.content}>
         <View style={styles.header}>
           <Image source={require('../assets/icon.png')} style={styles.logo} />
@@ -63,7 +62,7 @@ export default function WelcomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#F8F9FA',
   },
   safeArea: {
     flex: 1,
@@ -85,15 +84,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#111827',
     textAlign: 'center',
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
-    color: '#fff',
+    color: '#6B7280',
     textAlign: 'center',
-    opacity: 0.8,
     paddingHorizontal: 20,
     lineHeight: 24,
   },
@@ -103,10 +101,15 @@ const styles = StyleSheet.create({
   feature: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(139, 92, 246, 0.08)',
+    backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 20,
     marginBottom: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   featureIcon: {
     fontSize: 36,
@@ -114,37 +117,42 @@ const styles = StyleSheet.create({
   },
   featureText: {
     fontSize: 16,
-    color: '#fff',
+    color: '#111827',
     fontWeight: '700',
   },
   buttonContainer: {
     marginBottom: 20,
   },
   primaryButton: {
-    backgroundColor: '#FBBF24',
+    backgroundColor: '#8B5CF6',
     padding: 20,
     borderRadius: 20,
     alignItems: 'center',
     marginBottom: 16,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowRadius: 6,
   },
   primaryButtonText: {
-    color: '#000',
+    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
   },
   secondaryButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 20,
     alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   secondaryButtonText: {
-    color: '#fff',
+    color: '#8B5CF6',
     fontSize: 18,
     fontWeight: 'bold',
   },
