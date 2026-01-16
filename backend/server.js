@@ -25,7 +25,7 @@ const anthropic = new Anthropic({
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
+  origin: process.env.FRONTEND_URL,
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -197,6 +197,9 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 app.put('/api/auth/bank-name', authenticateToken, async (req, res) => {
   try {
     const { bankAlertName } = req.body;
+    if (!bankAlertName || bankAlertName.length > 100) {
+      return res.status(400).json({ error: 'Invalid bank name' });
+    }
     await pool.query(
       'UPDATE users SET bank_alert_name = $1 WHERE id = $2',
       [bankAlertName, req.user.userId]
