@@ -48,7 +48,7 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS transactions (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        date TEXT NOT NULL,
+        date DATE NOT NULL,
         amount NUMERIC(10, 2) NOT NULL,
         description TEXT,
         bank TEXT,
