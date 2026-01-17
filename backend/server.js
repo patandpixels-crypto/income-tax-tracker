@@ -49,7 +49,7 @@ async function initializeDatabase() {
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         date TEXT NOT NULL,
-        amount REAL NOT NULL,
+        amount NUMERIC(10, 2) NOT NULL,
         description TEXT,
         bank TEXT,
         raw_sms TEXT,
