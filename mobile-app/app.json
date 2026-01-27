@@ -4,6 +4,7 @@
     "slug": "income-tax-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
+    "sdkVersion": "54.0.0",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -23,7 +24,8 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#4338CA"
       },
-      "package": "com.incometaxtracker.app",
+      "package": "com.patch1d.incometaxtracker",
+      "versionCode": 1,
       "permissions": [
         "READ_SMS",
         "RECEIVE_SMS"
