@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import api from '../services/api';
@@ -37,6 +38,22 @@ export default function LoginScreen({ navigation }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = () => {
+    Alert.alert(
+      'Forgot Password',
+      'Please contact support to reset your password.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Email Support',
+          onPress: () => {
+            Linking.openURL('mailto:support@incometaxtracker.com?subject=Password Reset Request');
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -91,6 +108,13 @@ export default function LoginScreen({ navigation }) {
               ) : (
                 <Text style={styles.buttonText}>Sign In</Text>
               )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              onPress={handleForgotPassword}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
             <View style={styles.footer}>
@@ -181,6 +205,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  forgotPassword: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: '#8B5CF6',
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',
