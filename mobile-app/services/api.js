@@ -46,6 +46,15 @@ class ApiService {
     return response.data;
   }
 
+  async googleAuth(accessToken) {
+    const response = await this.api.post('/auth/google', { accessToken });
+    if (response.data.token) {
+      await AsyncStorage.setItem('userToken', response.data.token);
+      await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  }
+
   async logout() {
     await AsyncStorage.removeItem('userToken');
     await AsyncStorage.removeItem('userData');

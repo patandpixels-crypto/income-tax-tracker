@@ -10,14 +10,33 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
 import api from '../services/api';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: Constants.expoConfig?.extra?.googleSignIn?.androidClientId,
+    iosClientId: Constants.expoConfig?.extra?.googleSignIn?.iosClientId,
+    webClientId: Constants.expoConfig?.extra?.googleSignIn?.webClientId,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      handleGoogleSignIn(authentication.accessToken);
+    }
+  }, [response]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -34,6 +53,37 @@ export default function LoginScreen({ navigation }) {
         'Login Failed',
         error.response?.data?.message || 'Invalid email or password'
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = () => {
+    Alert.alert(
+      'Forgot Password',
+      'Please contact support to reset your password.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Email Support',
+          onPress: () => {
+            Linking.openURL('mailto:support@incometaxtracker.com?subject=Password Reset Request');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleGoogleSignIn = async (accessToken) => {
+    try {
+      setLoading(true);
+      // Send access token to your backend
+      const response = await api.googleAuth(accessToken);
+      if (response.success) {
+        navigation.replace('Dashboard');
+      }
+    } catch (error) {
+      Alert.alert('Google Sign-In Failed', error.message || 'Could not sign in with Google');
     } finally {
       setLoading(false);
     }
@@ -91,6 +141,27 @@ export default function LoginScreen({ navigation }) {
               ) : (
                 <Text style={styles.buttonText}>Sign In</Text>
               )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.forgotPassword}
+              onPress={handleForgotPassword}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={() => promptAsync()}
+              disabled={!request || loading}
+            >
+              <Text style={styles.googleButtonText}>🔍 Continue with Google</Text>
             </TouchableOpacity>
 
             <View style={styles.footer}>
@@ -181,6 +252,49 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  forgotPassword: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: '#8B5CF6',
+    fontWeight: '600',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  googleButton: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 20,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  googleButtonText: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '700',
   },
   footer: {
     flexDirection: 'row',
