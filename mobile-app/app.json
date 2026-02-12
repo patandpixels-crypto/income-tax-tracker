@@ -36,9 +36,9 @@
         "projectId": "e4a836ef-186c-4604-baa4-2aef91a5457a"
       },
       "googleSignIn": {
-        "androidClientId": "YOUR_ANDROID_CLIENT_ID_HERE.apps.googleusercontent.com",
+        "androidClientId": "287763222921-pffl6vs5vmj90sdu6nhqda9bldk532br.apps.googleusercontent.com",
         "iosClientId": "YOUR_IOS_CLIENT_ID_HERE.apps.googleusercontent.com",
-        "webClientId": "YOUR_WEB_CLIENT_ID_HERE.apps.googleusercontent.com"
+        "webClientId": "287763222921-pffl6vs5vmj90sdu6nhqda9bldk532br.apps.googleusercontent.com"
       }
     }
   }
