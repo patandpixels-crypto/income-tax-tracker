@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "e4a836ef-186c-4604-baa4-2aef91a5457a"
+      }
+    },
+    "android": {
+      "package": "com.patch1d.incometaxtracker"
+    }
+  }
+}
