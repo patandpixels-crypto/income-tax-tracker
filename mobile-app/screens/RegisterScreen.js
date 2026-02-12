@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
 import api from '../services/api';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -20,6 +25,19 @@ export default function RegisterScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: Constants.expoConfig?.extra?.googleSignIn?.androidClientId,
+    iosClientId: Constants.expoConfig?.extra?.googleSignIn?.iosClientId,
+    webClientId: Constants.expoConfig?.extra?.googleSignIn?.webClientId,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      handleGoogleSignIn(authentication.accessToken);
+    }
+  }, [response]);
 
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -51,6 +69,25 @@ export default function RegisterScreen({ navigation }) {
         'Registration Failed',
         error.response?.data?.message || 'Could not create account'
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async (accessToken) => {
+    try {
+      setLoading(true);
+      const response = await api.googleAuth(accessToken);
+      if (response.success) {
+        Alert.alert('Success', 'Account created successfully!', [
+          {
+            text: 'OK',
+            onPress: () => navigation.replace('Dashboard'),
+          },
+        ]);
+      }
+    } catch (error) {
+      Alert.alert('Google Sign-In Failed', error.message || 'Could not sign in with Google');
     } finally {
       setLoading(false);
     }
@@ -133,6 +170,20 @@ export default function RegisterScreen({ navigation }) {
               ) : (
                 <Text style={styles.buttonText}>Create Account</Text>
               )}
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={() => promptAsync()}
+              disabled={!request || loading}
+            >
+              <Text style={styles.googleButtonText}>🔍 Continue with Google</Text>
             </TouchableOpacity>
 
             <View style={styles.footer}>
@@ -223,6 +274,40 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  googleButton: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 20,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  googleButtonText: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '700',
   },
   footer: {
     flexDirection: 'row',

@@ -1,0 +1,7 @@
+# Start the emulator first in Android Studio (click the play button)
+# Then run this command:
+npx expo start --android
+
+# Or if the emulator is already running:
+npx expo start
+# Then press 'a' to open on Android emulator

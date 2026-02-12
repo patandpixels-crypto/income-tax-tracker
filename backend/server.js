@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pg from 'pg';
 import Anthropic from '@anthropic-ai/sdk';
+import { OAuth2Client } from 'google-auth-library';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -23,6 +24,9 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// Initialize Google OAuth
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 // Middleware
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
@@ -37,8 +41,9 @@ async function initializeDatabase() {
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
+        password TEXT,
         name TEXT NOT NULL,
+        google_id TEXT UNIQUE,
         bank_alert_name TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -88,11 +93,11 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
-    if (!email || !password || !name) {
-      return res.status(400).json({ error: 'All fields required' });
+    if (!email || !name) {
+      return res.status(400).json({ error: 'Email and name required' });
     }
 
-    if (password.length < 6) {
+    if (password && password.length < 6) {
       return res.status(400).json({ error: 'Password must be 6+ characters' });
     }
 
@@ -166,6 +171,69 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// Google OAuth Login/Register
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Access token required' });
+    }
+
+    // Verify the Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: accessToken,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, sub: googleId } = payload;
+
+    // Check if user exists
+    let result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    let user;
+
+    if (result.rows.length === 0) {
+      // Create new user
+      result = await pool.query(
+        'INSERT INTO users (email, name, google_id, password) VALUES ($1, $2, $3, NULL) RETURNING *',
+        [email, name, googleId]
+      );
+      user = result.rows[0];
+    } else {
+      user = result.rows[0];
+      // Link Google account if not already linked
+      if (!user.google_id) {
+        await pool.query(
+          'UPDATE users SET google_id = $1 WHERE id = $2',
+          [googleId, user.id]
+        );
+      }
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, name: user.name },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        bankAlertName: user.bank_alert_name
+      }
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    res.status(401).json({ error: 'Invalid Google token' });
+  }
+});
+
 // Get current user
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
@@ -178,14 +246,12 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const user = result.rows[0];
     res.json({
-      success: true,
-      user: {
-        id: result.rows[0].id,
-        email: result.rows[0].email,
-        name: result.rows[0].name,
-        bankAlertName: result.rows[0].bank_alert_name
-      }
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      bankAlertName: user.bank_alert_name
     });
   } catch (error) {
     console.error('Get user error:', error);
@@ -201,7 +267,21 @@ app.put('/api/auth/bank-name', authenticateToken, async (req, res) => {
       'UPDATE users SET bank_alert_name = $1 WHERE id = $2',
       [bankAlertName, req.user.userId]
     );
-    res.json({ success: true });
+
+    const result = await pool.query(
+      'SELECT id, email, name, bank_alert_name FROM users WHERE id = $1',
+      [req.user.userId]
+    );
+
+    res.json({
+      success: true,
+      user: {
+        id: result.rows[0].id,
+        email: result.rows[0].email,
+        name: result.rows[0].name,
+        bankAlertName: result.rows[0].bank_alert_name
+      }
+    });
   } catch (error) {
     console.error('Update error:', error);
     res.status(500).json({ error: 'Update failed' });
