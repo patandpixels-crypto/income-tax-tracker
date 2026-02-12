@@ -59,14 +59,14 @@ function isDebitTransaction(text, userName = null) {
     // Check if user's name appears in Sender Details section
     const senderMatch = text.match(/sender\s+details[\s\S]{0,200}/i);
     if (senderMatch && namePattern.test(senderMatch[0])) {
-      console.log('DETECTED AS DEBIT: User is the sender');
+      if (__DEV__) console.log('DETECTED AS DEBIT: User is the sender');
       return true; // User is sending money = debit
     }
 
     // Check if user's name appears in Recipient Details section
     const recipientMatch = text.match(/recipient\s+details[\s\S]{0,200}/i);
     if (recipientMatch && namePattern.test(recipientMatch[0])) {
-      console.log('DETECTED AS CREDIT: User is the recipient');
+      if (__DEV__) console.log('DETECTED AS CREDIT: User is the recipient');
       return false; // User is receiving money = credit
     }
   }
@@ -79,11 +79,11 @@ function isDebitTransaction(text, userName = null) {
     // Extract recipient name for business detection
     const recipientMatch = text.match(/recipient\s+details[\s\S]{0,100}?([A-Z][A-Z\s]{5,})/i);
 
-    console.log('Recipient match:', recipientMatch);
+    if (__DEV__) console.log('Recipient match:', recipientMatch);
 
     if (recipientMatch) {
       const recipientName = recipientMatch[1].trim();
-      console.log('Recipient name extracted:', recipientName);
+      if (__DEV__) console.log('Recipient name extracted:', recipientName);
 
       // Check if recipient has business keywords or all-caps business name patterns
       const businessPatterns = /\b(ltd|limited|intl|international|partnership|company|enterprise|ventures|group|inc|corporation|church|ministry|foundation|ngo|association)\b/i;
@@ -91,11 +91,13 @@ function isDebitTransaction(text, userName = null) {
       // Check if it's an all-caps business name (usually 4+ words all caps)
       const isAllCapsBusinessName = /^[A-Z\s]{10,}$/.test(recipientName) && recipientName.split(/\s+/).length >= 3;
 
-      console.log('Business pattern test:', businessPatterns.test(recipientName));
-      console.log('All caps business name test:', isAllCapsBusinessName);
+      if (__DEV__) {
+        console.log('Business pattern test:', businessPatterns.test(recipientName));
+        console.log('All caps business name test:', isAllCapsBusinessName);
+      }
 
       if (businessPatterns.test(recipientName) || isAllCapsBusinessName) {
-        console.log('DETECTED AS DEBIT: Sending to business/organization');
+        if (__DEV__) console.log('DETECTED AS DEBIT: Sending to business/organization');
         return true; // Sending to a business = debit
       }
     }

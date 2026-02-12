@@ -61,8 +61,15 @@ class ApiService {
   }
 
   async getCurrentUser() {
-    const userData = await AsyncStorage.getItem('userData');
-    return userData ? JSON.parse(userData) : null;
+    try {
+      const userData = await AsyncStorage.getItem('userData');
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Failed to parse user data:', error);
+      // Clear corrupted data
+      await AsyncStorage.removeItem('userData');
+      return null;
+    }
   }
 
   async updateBankAlertName(name) {

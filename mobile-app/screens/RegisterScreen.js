@@ -68,7 +68,7 @@ export default function RegisterScreen({ navigation }) {
     } catch (error) {
       Alert.alert(
         'Registration Failed',
-        error.response?.data?.message || 'Could not create account'
+        error?.response?.data?.message || error.message || 'Could not create account'
       );
     } finally {
       setLoading(false);

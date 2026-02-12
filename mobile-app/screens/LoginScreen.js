@@ -52,7 +52,7 @@ export default function LoginScreen({ navigation }) {
     } catch (error) {
       Alert.alert(
         'Login Failed',
-        error.response?.data?.message || 'Invalid email or password'
+        error?.response?.data?.message || error.message || 'Invalid email or password'
       );
     } finally {
       setLoading(false);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -33,34 +33,36 @@ export default function DashboardScreen({ navigation }) {
   const [showNameInput, setShowNameInput] = useState(false);
   const [tempName, setTempName] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const userData = await api.getCurrentUser();
       setUser(userData);
 
       const response = await api.getTransactions();
-      console.log('API Response:', response);
+      if (__DEV__) console.log('API Response:', response);
 
       // Handle response format: {success: true, transactions: [...]}
       const transactionsData = response.transactions || response;
-      console.log('Transactions data:', transactionsData);
-      console.log('Number of transactions:', transactionsData?.length);
+      if (__DEV__) {
+        console.log('Transactions data:', transactionsData);
+        console.log('Number of transactions:', transactionsData?.length);
+      }
 
       const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
       setTransactions(transactionsArray);
 
-      console.log('Transactions set to state:', transactionsArray.length);
+      if (__DEV__) console.log('Transactions set to state:', transactionsArray.length);
     } catch (error) {
       console.error('Error loading data:', error);
       setTransactions([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -146,7 +148,7 @@ export default function DashboardScreen({ navigation }) {
 
       // Pick image
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.8,
         base64: true,
@@ -173,12 +175,14 @@ export default function DashboardScreen({ navigation }) {
 
       // Parse the bank alert text with user's bank alert name
       const userName = user?.bankAlertName || null;
-      console.log('Using bank alert name:', userName);
+      if (__DEV__) console.log('Using bank alert name:', userName);
 
       const transactionData = parseBankAlert(response.text, userName);
 
-      console.log('Extracted text:', response.text);
-      console.log('Parsed transaction:', transactionData);
+      if (__DEV__) {
+        console.log('Extracted text:', response.text);
+        console.log('Parsed transaction:', transactionData);
+      }
 
       if (!transactionData) {
         Alert.alert(
@@ -214,14 +218,14 @@ export default function DashboardScreen({ navigation }) {
             onPress: async () => {
               try {
                 // Create the transaction
-                console.log('Creating transaction:', transactionData);
+                if (__DEV__) console.log('Creating transaction:', transactionData);
                 const createdTransaction = await api.createTransaction(transactionData);
-                console.log('Transaction created:', createdTransaction);
+                if (__DEV__) console.log('Transaction created:', createdTransaction);
 
                 // Reload transactions
-                console.log('Reloading transactions...');
+                if (__DEV__) console.log('Reloading transactions...');
                 await loadData();
-                console.log('Transactions reloaded');
+                if (__DEV__) console.log('Transactions reloaded');
 
                 Alert.alert(
                   'Success!',
@@ -248,10 +252,10 @@ export default function DashboardScreen({ navigation }) {
   // Calculate totals
   // Treat transactions without type as income (default behavior)
   const incomeTransactions = transactions.filter((t) => !t.type || t.type === 'income');
-  console.log('Income transactions:', incomeTransactions);
+  if (__DEV__) console.log('Income transactions:', incomeTransactions);
 
   const totalIncome = incomeTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-  console.log('Total income calculated:', totalIncome);
+  if (__DEV__) console.log('Total income calculated:', totalIncome);
 
   const totalExpenses = transactions
     .filter((t) => t.type === 'expense')
@@ -390,7 +394,7 @@ export default function DashboardScreen({ navigation }) {
             </View>
           ) : (
             transactions.slice(0, 5).map((transaction, index) => (
-              <View key={index} style={styles.transactionItem}>
+              <View key={transaction.id || transaction._id || index} style={styles.transactionItem}>
                 <View style={styles.transactionLeft}>
                   <Text style={styles.transactionIcon}>
                     {transaction.type === 'income' ? '💵' : '💳'}
@@ -400,7 +404,9 @@ export default function DashboardScreen({ navigation }) {
                       {transaction.description}
                     </Text>
                     <Text style={styles.transactionDate}>
-                      {new Date(transaction.date).toLocaleDateString()}
+                      {transaction.date && !isNaN(new Date(transaction.date).getTime())
+                        ? new Date(transaction.date).toLocaleDateString()
+                        : 'N/A'}
                     </Text>
                   </View>
                 </View>
