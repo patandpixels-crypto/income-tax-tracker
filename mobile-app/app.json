@@ -41,10 +41,6 @@
         "webClientId": "287763222921-7bkaa6op41m3dhr3a2rv834gt86sfel0.apps.googleusercontent.com"
       }
     },
-    "plugins": [
-      [
-        "@react-native-google-signin/google-signin"
-      ]
-    ]
+    
   }
 }
