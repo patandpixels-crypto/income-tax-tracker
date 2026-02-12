@@ -40,11 +40,6 @@
         "iosClientId": "YOUR_IOS_CLIENT_ID_HERE.apps.googleusercontent.com",
         "webClientId": "YOUR_WEB_CLIENT_ID_HERE.apps.googleusercontent.com"
       }
-    },
-    "plugins": [
-      [
-        "@react-native-google-signin/google-signin"
-      ]
-    ]
+    }
   }
 }
