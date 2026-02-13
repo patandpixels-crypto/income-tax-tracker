@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Account - Income Tax Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 5px;
+        }
+
+        .warning p {
+            color: #856404;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .button {
+            width: 100%;
+            padding: 14px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .button:hover {
+            background: #c82333;
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .success p {
+            color: #155724;
+            font-size: 14px;
+        }
+
+        .error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .error p {
+            color: #721c24;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Delete Account</h1>
+        <p class="subtitle">Income Tax Tracker</p>
+
+        <div class="warning">
+            <p><strong>⚠️ Warning:</strong> This action cannot be undone.</p>
+            <p>• All your transaction data will be permanently deleted</p>
+            <p>• Your account will be removed from our system</p>
+            <p>• This process may take up to 30 days</p>
+        </div>
+
+        <div class="success" id="successMessage">
+            <p><strong>✓ Request Submitted</strong></p>
+            <p>We've received your account deletion request. We'll process it within 30 days and send a confirmation email.</p>
+        </div>
+
+        <div class="error" id="errorMessage">
+            <p><strong>✗ Error</strong></p>
+            <p id="errorText">Something went wrong. Please try again.</p>
+        </div>
+
+        <form id="deleteForm">
+            <div class="form-group">
+                <label for="email">Email Address *</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    required
+                    placeholder="Enter your registered email"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="reason">Reason for Deletion (Optional)</label>
+                <textarea
+                    id="reason"
+                    name="reason"
+                    placeholder="Help us improve by telling us why you're leaving..."
+                ></textarea>
+            </div>
+
+            <button type="submit" class="button" id="submitBtn">
+                Delete My Account
+            </button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('deleteForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            const email = document.getElementById('email').value;
+            const reason = document.getElementById('reason').value;
+
+            // Hide previous messages
+            successMessage.style.display = 'none';
+            errorMessage.style.display = 'none';
+
+            // Disable button
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            try {
+                const response = await fetch('https://income-tax-tracker.onrender.com/api/auth/delete-account-request', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, reason })
+                });
+
+                if (response.ok) {
+                    successMessage.style.display = 'block';
+                    document.getElementById('deleteForm').reset();
+                } else {
+                    throw new Error('Failed to submit request');
+                }
+            } catch (error) {
+                errorMessage.style.display = 'block';
+                document.getElementById('errorText').textContent = 'Failed to submit request. Please email us at patrick.chidozie1@gmail.com';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Delete My Account';
+            }
+        });
+    </script>
+</body>
+</html>
