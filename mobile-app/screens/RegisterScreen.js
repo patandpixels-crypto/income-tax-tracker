@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import Constants from 'expo-constants';
+// import * as Google from 'expo-auth-session/providers/google';
+// import * as WebBrowser from 'expo-web-browser';
+// import Constants from 'expo-constants';
 import api from '../services/api';
 
-WebBrowser.maybeCompleteAuthSession();
+// WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -26,18 +26,19 @@ export default function RegisterScreen({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: Constants.expoConfig?.extra?.googleSignIn?.androidClientId,
-    iosClientId: Constants.expoConfig?.extra?.googleSignIn?.iosClientId,
-    webClientId: Constants.expoConfig?.extra?.googleSignIn?.webClientId,
-  });
+  // Temporarily disabled for Expo Go compatibility
+  // const [request, response, promptAsync] = Google.useAuthRequest({
+  //   androidClientId: Constants.expoConfig?.extra?.googleSignIn?.androidClientId,
+  //   iosClientId: Constants.expoConfig?.extra?.googleSignIn?.iosClientId,
+  //   webClientId: Constants.expoConfig?.extra?.googleSignIn?.webClientId,
+  // });
 
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      handleGoogleSignIn(authentication.accessToken);
-    }
-  }, [response]);
+  // useEffect(() => {
+  //   if (response?.type === 'success') {
+  //     const { authentication } = response;
+  //     handleGoogleSignIn(authentication.accessToken);
+  //   }
+  // }, [response]);
 
   const handleRegister = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -67,31 +68,32 @@ export default function RegisterScreen({ navigation }) {
     } catch (error) {
       Alert.alert(
         'Registration Failed',
-        error.response?.data?.message || 'Could not create account'
+        error?.response?.data?.message || error.message || 'Could not create account'
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = async (accessToken) => {
-    try {
-      setLoading(true);
-      const response = await api.googleAuth(accessToken);
-      if (response.success) {
-        Alert.alert('Success', 'Account created successfully!', [
-          {
-            text: 'OK',
-            onPress: () => navigation.replace('Dashboard'),
-          },
-        ]);
-      }
-    } catch (error) {
-      Alert.alert('Google Sign-In Failed', error.message || 'Could not sign in with Google');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Temporarily disabled for Expo Go compatibility
+  // const handleGoogleSignIn = async (accessToken) => {
+  //   try {
+  //     setLoading(true);
+  //     const response = await api.googleAuth(accessToken);
+  //     if (response.success) {
+  //       Alert.alert('Success', 'Account created successfully!', [
+  //         {
+  //           text: 'OK',
+  //           onPress: () => navigation.replace('Dashboard'),
+  //         },
+  //       ]);
+  //     }
+  //   } catch (error) {
+  //     Alert.alert('Google Sign-In Failed', error.message || 'Could not sign in with Google');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   return (
     <View style={styles.container}>
@@ -172,7 +174,8 @@ export default function RegisterScreen({ navigation }) {
               )}
             </TouchableOpacity>
 
-            <View style={styles.divider}>
+            {/* Temporarily disabled for Expo Go compatibility */}
+            {/* <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>OR</Text>
               <View style={styles.dividerLine} />
@@ -184,7 +187,7 @@ export default function RegisterScreen({ navigation }) {
               disabled={!request || loading}
             >
               <Text style={styles.googleButtonText}>🔍 Continue with Google</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Already have an account? </Text>

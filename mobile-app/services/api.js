@@ -25,6 +25,19 @@ class ApiService {
         return Promise.reject(error);
       }
     );
+
+    // Handle authentication errors
+    this.api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        // If token is invalid/expired (401 or 403), logout user
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          await AsyncStorage.removeItem('userToken');
+          await AsyncStorage.removeItem('userData');
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
   // Auth endpoints
@@ -61,8 +74,15 @@ class ApiService {
   }
 
   async getCurrentUser() {
-    const userData = await AsyncStorage.getItem('userData');
-    return userData ? JSON.parse(userData) : null;
+    try {
+      const userData = await AsyncStorage.getItem('userData');
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Failed to parse user data:', error);
+      // Clear corrupted data
+      await AsyncStorage.removeItem('userData');
+      return null;
+    }
   }
 
   async updateBankAlertName(name) {

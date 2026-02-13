@@ -288,6 +288,32 @@ app.put('/api/auth/bank-name', authenticateToken, async (req, res) => {
   }
 });
 
+// Request account deletion
+app.post('/api/auth/delete-account-request', async (req, res) => {
+  try {
+    const { email, reason } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Log the deletion request
+    console.log(`Account deletion requested for: ${email}`);
+    console.log(`Reason: ${reason || 'Not provided'}`);
+
+    // TODO: Store deletion requests in a table or send email notification
+    // For now, just log it
+
+    res.json({
+      success: true,
+      message: 'Account deletion request received. We will process it within 30 days.'
+    });
+  } catch (error) {
+    console.error('Delete account request error:', error);
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
 // Get transactions
 app.get('/api/transactions', authenticateToken, async (req, res) => {
   try {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,30 +13,31 @@ import {
   Linking,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import Constants from 'expo-constants';
+// import * as Google from 'expo-auth-session/providers/google';
+// import * as WebBrowser from 'expo-web-browser';
+// import Constants from 'expo-constants';
 import api from '../services/api';
 
-WebBrowser.maybeCompleteAuthSession();
+// WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: Constants.expoConfig?.extra?.googleSignIn?.androidClientId,
-    iosClientId: Constants.expoConfig?.extra?.googleSignIn?.iosClientId,
-    webClientId: Constants.expoConfig?.extra?.googleSignIn?.webClientId,
-  });
+  // Temporarily disabled Google Sign-In for Expo Go compatibility
+  // const [request, response, promptAsync] = Google.useAuthRequest({
+  //   androidClientId: Constants.expoConfig?.extra?.googleSignIn?.androidClientId,
+  //   iosClientId: Constants.expoConfig?.extra?.googleSignIn?.iosClientId,
+  //   webClientId: Constants.expoConfig?.extra?.googleSignIn?.webClientId,
+  // });
 
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      handleGoogleSignIn(authentication.accessToken);
-    }
-  }, [response]);
+  // useEffect(() => {
+  //   if (response?.type === 'success') {
+  //     const { authentication } = response;
+  //     handleGoogleSignIn(authentication.accessToken);
+  //   }
+  // }, [response]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -51,7 +52,7 @@ export default function LoginScreen({ navigation }) {
     } catch (error) {
       Alert.alert(
         'Login Failed',
-        error.response?.data?.message || 'Invalid email or password'
+        error?.response?.data?.message || error.message || 'Invalid email or password'
       );
     } finally {
       setLoading(false);
@@ -74,20 +75,21 @@ export default function LoginScreen({ navigation }) {
     );
   };
 
-  const handleGoogleSignIn = async (accessToken) => {
-    try {
-      setLoading(true);
-      // Send access token to your backend
-      const response = await api.googleAuth(accessToken);
-      if (response.success) {
-        navigation.replace('Dashboard');
-      }
-    } catch (error) {
-      Alert.alert('Google Sign-In Failed', error.message || 'Could not sign in with Google');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Temporarily disabled for Expo Go compatibility
+  // const handleGoogleSignIn = async (accessToken) => {
+  //   try {
+  //     setLoading(true);
+  //     // Send access token to your backend
+  //     const response = await api.googleAuth(accessToken);
+  //     if (response.success) {
+  //       navigation.replace('Dashboard');
+  //     }
+  //   } catch (error) {
+  //     Alert.alert('Google Sign-In Failed', error.message || 'Could not sign in with Google');
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   return (
     <View style={styles.container}>
@@ -150,7 +152,8 @@ export default function LoginScreen({ navigation }) {
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
-            <View style={styles.divider}>
+            {/* Temporarily disabled for Expo Go compatibility */}
+            {/* <View style={styles.divider}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>OR</Text>
               <View style={styles.dividerLine} />
@@ -162,7 +165,7 @@ export default function LoginScreen({ navigation }) {
               disabled={!request || loading}
             >
               <Text style={styles.googleButtonText}>🔍 Continue with Google</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
