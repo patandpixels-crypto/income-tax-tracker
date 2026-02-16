@@ -43,7 +43,8 @@
             "enableShrinkResourcesInReleaseBuilds": true
           }
         }
-      ]
+      ],
+      "./plugins/withSMSListener.js"
     ],
     "extra": {
       "eas": {
