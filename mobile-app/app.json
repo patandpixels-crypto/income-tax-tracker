@@ -31,6 +31,18 @@
         "RECEIVE_SMS"
       ]
     },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0"
+          }
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "e4a836ef-186c-4604-baa4-2aef91a5457a"
