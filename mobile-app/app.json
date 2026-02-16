@@ -2,7 +2,7 @@
   "expo": {
     "name": "Income Tax Tracker",
     "slug": "income-tax-tracker",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "sdkVersion": "54.0.0",
     "icon": "./assets/icon.png",
@@ -25,7 +25,7 @@
         "backgroundColor": "#4338CA"
       },
       "package": "com.patch1d.incometaxtracker",
-      "versionCode": 1,
+      "versionCode": 2,
       "permissions": [
         "READ_SMS",
         "RECEIVE_SMS"
