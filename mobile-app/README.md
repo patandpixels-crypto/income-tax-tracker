@@ -56,8 +56,38 @@ To create a production APK for Google Play Store:
 ```bash
 npm install -g eas-cli
 eas login
-eas build --platform android
+eas build --platform android --profile production
 ```
+
+### ProGuard/R8 Configuration
+
+The app is configured with ProGuard/R8 obfuscation for production builds. This:
+- Reduces app size by removing unused code
+- Obfuscates code to make reverse engineering harder
+- Generates mapping files for crash debugging
+
+### Uploading Deobfuscation Files to Google Play Console
+
+When publishing to Google Play Store, you'll see a warning about missing deobfuscation files. Here's how to fix it:
+
+1. **Download the mapping file from EAS**:
+   - After your build completes, go to https://expo.dev
+   - Navigate to your project → Builds
+   - Click on the completed production build
+   - Download the `mapping.txt` file (or `proguard-mapping.txt`)
+
+2. **Upload to Google Play Console**:
+   - Go to Google Play Console
+   - Select your app
+   - Go to: **Release** → **App bundle explorer** → Select your release
+   - Click on the **Downloads** tab
+   - Click **Upload** under "ProGuard mapping file"
+   - Upload the `mapping.txt` file you downloaded from EAS
+
+3. **Alternative - Automatic Upload**:
+   You can also upload mapping files using Google Play's Upload API, but manual upload is simpler for most cases.
+
+**Why this matters**: The mapping file allows Google Play to deobfuscate crash reports, making it easier to debug production issues.
 
 ## Screens
 
