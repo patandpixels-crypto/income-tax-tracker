@@ -58,8 +58,8 @@ export default function SMSIncomeTracker() {
 
       if (response.ok) {
         const data = await response.json();
-        setCurrentUser(data.user);
-        setUserName(data.user?.bankAlertName || "");
+        setCurrentUser(data);
+        setUserName(data.bankAlertName || "");
         setAuthToken(token);
         setIsAuthenticated(true);
       } else {
