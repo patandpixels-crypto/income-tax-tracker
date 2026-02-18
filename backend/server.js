@@ -436,7 +436,7 @@ app.post('/api/extract-pdf', authenticateToken, async (req, res) => {
     }
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
       messages: [{
         role: 'user',
@@ -492,8 +492,8 @@ Return ONLY the JSON array, no explanation or extra text.`
 
     res.json({ success: true, transactions });
   } catch (error) {
-    console.error('PDF extract error:', error);
-    res.status(500).json({ error: 'Failed to process PDF' });
+    console.error('PDF extract error:', error?.message || error);
+    res.status(500).json({ error: 'Failed to process PDF', detail: error?.message || String(error) });
   }
 });
 

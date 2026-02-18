@@ -298,7 +298,10 @@ export default function SMSIncomeTracker() {
         body: JSON.stringify({ pdfData: base64 }),
       });
 
-      if (!response.ok) throw new Error("Failed to process PDF");
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || errData.error || "Failed to process PDF");
+      }
 
       const data = await response.json();
 
