@@ -6,6 +6,7 @@ import pg from 'pg';
 import Anthropic from '@anthropic-ai/sdk';
 import { OAuth2Client } from 'google-auth-library';
 import dotenv from 'dotenv';
+import { PDFParse } from 'pdf-parse';
 
 dotenv.config();
 
@@ -435,31 +436,43 @@ app.post('/api/extract-pdf', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'PDF data required' });
     }
 
+    // Convert base64 to buffer and extract text with pdf-parse
+    const pdfBuffer = Buffer.from(pdfData, 'base64');
+    let pdfText = '';
+    try {
+      const parser = new PDFParse({ data: pdfBuffer });
+      const parsed = await parser.getText();
+      pdfText = parsed.text;
+    } catch (parseErr) {
+      console.error('PDF parse error:', parseErr?.message);
+      return res.status(400).json({ error: 'Could not read PDF file. Make sure it is a valid, non-password-protected PDF.' });
+    }
+
+    if (!pdfText || pdfText.trim().length < 20) {
+      return res.status(400).json({ error: 'PDF appears to be empty or image-only. Please upload a text-based bank statement PDF.' });
+    }
+
+    // Send extracted text to Claude
     const message = await anthropic.messages.create({
       model: 'claude-3-5-sonnet-20241022',
       max_tokens: 4000,
       messages: [{
         role: 'user',
-        content: [{
-          type: 'document',
-          source: { type: 'base64', media_type: 'application/pdf', data: pdfData }
-        }, {
-          type: 'text',
-          text: `Analyze this bank statement PDF and extract ALL income/credit transactions.
+        content: `Analyze this bank statement text and extract ALL income/credit transactions.
 
 Return ONLY a valid JSON array. Each object must have:
-- date: string (YYYY-MM-DD format, use the transaction date)
+- date: string (YYYY-MM-DD format)
 - amount: number (numeric value only, no currency symbols or commas)
 - description: string (narration or description of the transaction)
 - bank: string (bank name if visible, otherwise empty string)
-- type: string (must be "credit" for all income transactions)
+- type: string (must be "credit")
 
 Only include CREDIT/INCOME transactions (money received). Skip all debits, withdrawals, charges, and fees.
+If no income transactions found, return [].
+Return ONLY the JSON array, no explanation.
 
-If no income transactions are found, return an empty array [].
-
-Return ONLY the JSON array, no explanation or extra text.`
-        }]
+BANK STATEMENT TEXT:
+${pdfText.substring(0, 15000)}`
       }]
     });
 
@@ -477,7 +490,6 @@ Return ONLY the JSON array, no explanation or extra text.`
     let transactions = [];
     try {
       transactions = JSON.parse(jsonMatch[0]);
-      // Validate and sanitize each transaction
       transactions = transactions
         .filter(t => t.amount > 0 && t.type === 'credit')
         .map(t => ({
