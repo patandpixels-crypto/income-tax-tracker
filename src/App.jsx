@@ -51,7 +51,10 @@ export default function SMSIncomeTracker() {
   async function checkAuthentication() {
     try {
       const token = localStorage.getItem("authToken");
-      if (!token) return;
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
       const response = await fetch(`${API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
