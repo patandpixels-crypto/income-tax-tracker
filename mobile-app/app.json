@@ -2,7 +2,7 @@
   "expo": {
     "name": "Income Tax Tracker",
     "slug": "income-tax-tracker",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "sdkVersion": "54.0.0",
     "icon": "./assets/icon.png",
@@ -25,12 +25,27 @@
         "backgroundColor": "#4338CA"
       },
       "package": "com.patch1d.incometaxtracker",
-      "versionCode": 1,
+      "versionCode": 2,
       "permissions": [
         "READ_SMS",
         "RECEIVE_SMS"
       ]
     },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0",
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ],
+      "./plugins/withSMSListener.js"
+    ],
     "extra": {
       "eas": {
         "projectId": "e4a836ef-186c-4604-baa4-2aef91a5457a"

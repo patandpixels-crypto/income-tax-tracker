@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   TextInput,
   Modal,
+  Platform,
+  ToastAndroid,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +26,13 @@ import {
   formatCurrency,
   getEffectiveRate,
 } from '../services/taxCalculator';
+import {
+  startSMSListener,
+  stopSMSListener,
+  requestSMSPermission,
+  checkSMSPermission,
+  createTransactionFromSMS,
+} from '../services/smsListener';
 
 export default function DashboardScreen({ navigation }) {
   const [user, setUser] = useState(null);
@@ -32,6 +41,8 @@ export default function DashboardScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [showNameInput, setShowNameInput] = useState(false);
   const [tempName, setTempName] = useState('');
+  const [smsPermissionGranted, setSmsPermissionGranted] = useState(false);
+  const [smsListenerActive, setSmsListenerActive] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -63,6 +74,70 @@ export default function DashboardScreen({ navigation }) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Initialize SMS listener
+  useEffect(() => {
+    const initializeSMSListener = async () => {
+      if (Platform.OS !== 'android') {
+        return;
+      }
+
+      // Check if permissions are granted
+      const hasPermission = await checkSMSPermission();
+      setSmsPermissionGranted(hasPermission);
+
+      if (hasPermission && user?.bankAlertName) {
+        // Start SMS listener
+        const started = await startSMSListener(
+          user.bankAlertName,
+          handleTransactionDetected
+        );
+        setSmsListenerActive(started);
+      }
+    };
+
+    if (user) {
+      initializeSMSListener();
+    }
+
+    // Cleanup: Stop SMS listener when component unmounts
+    return () => {
+      stopSMSListener();
+      setSmsListenerActive(false);
+    };
+  }, [user?.bankAlertName]);
+
+  // Handle detected transaction from SMS
+  const handleTransactionDetected = async (transactionData, message) => {
+    try {
+      // Show toast notification
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(
+          `💰 Income detected: ${formatCurrency(transactionData.amount)}`,
+          ToastAndroid.LONG
+        );
+      }
+
+      // Create transaction automatically
+      await createTransactionFromSMS(transactionData);
+
+      // Reload transactions to show the new one
+      await loadData();
+
+      // Show success alert
+      Alert.alert(
+        '✅ Income Added!',
+        `${formatCurrency(transactionData.amount)} from ${transactionData.bank} has been automatically added to your income tracker.`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Failed to handle detected transaction:', error);
+      Alert.alert(
+        'Error',
+        'Failed to automatically add transaction: ' + error.message
+      );
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -373,14 +448,59 @@ export default function DashboardScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>📱 SMS Bank Alert Feature</Text>
-          <Text style={styles.infoText}>
-            The automatic SMS detection feature will be available in the production
-            app. It will automatically detect bank transaction alerts and add them to
-            your income tracker.
-          </Text>
-        </View>
+        {Platform.OS === 'android' && (
+          <View style={[
+            styles.infoCard,
+            smsListenerActive ? styles.infoCardSuccess : styles.infoCardWarning
+          ]}>
+            <Text style={styles.infoTitle}>
+              {smsListenerActive ? '✅ SMS Auto-Detection Active' : '📱 SMS Bank Alert Feature'}
+            </Text>
+            {smsListenerActive ? (
+              <Text style={styles.infoTextSuccess}>
+                Your app is now automatically monitoring for bank transaction alerts!
+                When you receive an income SMS, it will be automatically added to your tracker.
+              </Text>
+            ) : !smsPermissionGranted ? (
+              <>
+                <Text style={styles.infoText}>
+                  Grant SMS permissions to automatically detect bank alerts and add income transactions.
+                </Text>
+                <TouchableOpacity
+                  style={styles.enableSmsButton}
+                  onPress={async () => {
+                    const granted = await requestSMSPermission();
+                    if (granted) {
+                      setSmsPermissionGranted(true);
+                      if (user?.bankAlertName) {
+                        const started = await startSMSListener(
+                          user.bankAlertName,
+                          handleTransactionDetected
+                        );
+                        setSmsListenerActive(started);
+                      }
+                      Alert.alert(
+                        'Success!',
+                        'SMS permissions granted. The app will now automatically detect bank alerts.',
+                        [{ text: 'OK' }]
+                      );
+                    }
+                  }}
+                >
+                  <Text style={styles.enableSmsButtonText}>Enable SMS Auto-Detection</Text>
+                </TouchableOpacity>
+              </>
+            ) : !user?.bankAlertName ? (
+              <Text style={styles.infoText}>
+                Please set your bank alert name above to activate automatic SMS detection.
+              </Text>
+            ) : (
+              <Text style={styles.infoText}>
+                SMS permissions granted. Listener will start automatically.
+              </Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.recentTransactions}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
@@ -634,6 +754,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
   },
+  infoCardSuccess: {
+    backgroundColor: '#D1FAE5',
+  },
+  infoCardWarning: {
+    backgroundColor: '#FEF3C7',
+  },
   infoTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -644,6 +770,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4B5563',
     lineHeight: 22,
+    marginBottom: 12,
+  },
+  infoTextSuccess: {
+    fontSize: 14,
+    color: '#065F46',
+    lineHeight: 22,
+  },
+  enableSmsButton: {
+    backgroundColor: '#4338CA',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginTop: 8,
+    elevation: 3,
+    shadowColor: '#4338CA',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  enableSmsButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
   recentTransactions: {
     padding: 16,

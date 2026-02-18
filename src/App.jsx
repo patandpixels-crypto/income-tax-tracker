@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import logo from "./assets/logo.png";
-import { Plus, Trash2, Download, Image, Upload, LogOut, User } from "lucide-react";
+import { Plus, Trash2, Download, Image, Upload, LogOut, User, FileText } from "lucide-react";
 
 const API_URL = "https://income-tax-tracker.onrender.com/api";
 
@@ -21,6 +21,11 @@ export default function SMSIncomeTracker() {
   const [userName, setUserName] = useState("");
   const [showNameInput, setShowNameInput] = useState(false);
   const [tempName, setTempName] = useState("");
+
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [isPdfProcessing, setIsPdfProcessing] = useState(false);
+  const [pdfTransactions, setPdfTransactions] = useState([]);
+  const [selectedPdfTxns, setSelectedPdfTxns] = useState({});
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
@@ -53,8 +58,8 @@ export default function SMSIncomeTracker() {
 
       if (response.ok) {
         const data = await response.json();
-        setCurrentUser(data.user);
-        setUserName(data.user?.bankAlertName || "");
+        setCurrentUser(data);
+        setUserName(data.bankAlertName || "");
         setAuthToken(token);
         setIsAuthenticated(true);
       } else {
@@ -259,6 +264,101 @@ export default function SMSIncomeTracker() {
       setSelectedImage(null);
     } finally {
       setIsProcessingImage(false);
+    }
+  }
+
+  async function handlePdfUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file || file.type !== "application/pdf") {
+      setError("Please select a valid PDF file");
+      return;
+    }
+
+    setIsPdfProcessing(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(String(reader.result).split(",")[1]);
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
+      });
+
+      const response = await fetch(`${API_URL}/extract-pdf`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ pdfData: base64 }),
+      });
+
+      if (!response.ok) throw new Error("Failed to process PDF");
+
+      const data = await response.json();
+
+      if (!data.transactions || data.transactions.length === 0) {
+        setError("⚠️ No income transactions found in this PDF. Make sure it's a bank statement.");
+        return;
+      }
+
+      // Pre-select all transactions
+      const selected = {};
+      data.transactions.forEach((_, i) => { selected[i] = true; });
+
+      setPdfTransactions(data.transactions);
+      setSelectedPdfTxns(selected);
+      setShowPdfModal(true);
+    } catch (err) {
+      setError("Failed to process PDF: " + err.message);
+    } finally {
+      setIsPdfProcessing(false);
+      // Reset file input
+      event.target.value = "";
+    }
+  }
+
+  async function handleAddPdfTransactions() {
+    const toAdd = pdfTransactions.filter((_, i) => selectedPdfTxns[i]);
+
+    if (toAdd.length === 0) {
+      setError("Please select at least one transaction to add.");
+      return;
+    }
+
+    try {
+      const added = [];
+      for (const txn of toAdd) {
+        const response = await fetch(`${API_URL}/transactions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            date: txn.date,
+            amount: txn.amount,
+            description: txn.description,
+            bank: txn.bank,
+            rawSMS: null,
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          added.push(data.transaction);
+        }
+      }
+
+      setTransactions((prev) => [...added.reverse(), ...prev]);
+      setShowPdfModal(false);
+      setPdfTransactions([]);
+      setSelectedPdfTxns({});
+      setSuccess(`✅ ${added.length} transaction${added.length !== 1 ? "s" : ""} added from bank statement!`);
+      setTimeout(() => setSuccess(""), 4000);
+    } catch (err) {
+      setError("Failed to add transactions: " + err.message);
     }
   }
 
@@ -760,6 +860,100 @@ export default function SMSIncomeTracker() {
           </div>
         )}
 
+        {showPdfModal && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+              {/* Header */}
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900">📄 Bank Statement Transactions</h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  We found <span className="font-semibold text-purple-600">{pdfTransactions.length} income transaction{pdfTransactions.length !== 1 ? "s" : ""}</span> in your statement.
+                  Select the ones you want to add to your tax calculation.
+                </p>
+              </div>
+
+              {/* Select all toggle */}
+              <div className="px-6 py-3 bg-gray-50 border-b border-gray-200 flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="select-all-pdf"
+                  className="w-4 h-4 accent-purple-600 cursor-pointer"
+                  checked={pdfTransactions.length > 0 && pdfTransactions.every((_, i) => selectedPdfTxns[i])}
+                  onChange={(e) => {
+                    const next = {};
+                    pdfTransactions.forEach((_, i) => { next[i] = e.target.checked; });
+                    setSelectedPdfTxns(next);
+                  }}
+                />
+                <label htmlFor="select-all-pdf" className="text-sm font-semibold text-gray-700 cursor-pointer">
+                  Select all ({Object.values(selectedPdfTxns).filter(Boolean).length} of {pdfTransactions.length} selected)
+                </label>
+              </div>
+
+              {/* Transaction list */}
+              <div className="overflow-y-auto flex-1 px-6 py-4 space-y-3">
+                {pdfTransactions.map((txn, i) => (
+                  <label
+                    key={i}
+                    className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                      selectedPdfTxns[i]
+                        ? "border-purple-400 bg-purple-50"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1 w-4 h-4 accent-purple-600 cursor-pointer"
+                      checked={!!selectedPdfTxns[i]}
+                      onChange={(e) => setSelectedPdfTxns((prev) => ({ ...prev, [i]: e.target.checked }))}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-start gap-2">
+                        <p className="font-semibold text-gray-900 text-sm truncate">{txn.description || "—"}</p>
+                        <p className="font-bold text-green-600 whitespace-nowrap">{formatNGN(txn.amount)}</p>
+                      </div>
+                      <div className="flex gap-3 mt-1 text-xs text-gray-500">
+                        <span>📅 {txn.date}</span>
+                        {txn.bank && <span>🏦 {txn.bank}</span>}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+                <div className="flex items-center gap-2 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <span className="text-amber-600 text-sm">⚠️</span>
+                  <p className="text-xs text-amber-700">
+                    Only selected transactions will be added to your income tax calculation. You can delete any transaction later.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowPdfModal(false);
+                      setPdfTransactions([]);
+                      setSelectedPdfTxns({});
+                    }}
+                    className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-xl font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddPdfTransactions}
+                    disabled={Object.values(selectedPdfTxns).filter(Boolean).length === 0}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Plus size={18} />
+                    Add {Object.values(selectedPdfTxns).filter(Boolean).length} Transaction{Object.values(selectedPdfTxns).filter(Boolean).length !== 1 ? "s" : ""}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-7xl mx-auto">
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-3xl shadow-2xl p-8 mb-8 text-white">
             <div className="flex justify-between items-start flex-wrap gap-4">
@@ -884,16 +1078,36 @@ export default function SMSIncomeTracker() {
                 <h2 className="text-xl font-bold mb-4">📝 Add Transaction</h2>
 
                 <div className="mb-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-dashed border-blue-200">
-                  <div className="flex flex-col items-center">
-                    <Upload className="text-blue-600 mb-3" size={32} />
-                    <label className="cursor-pointer">
-                      <span className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 inline-flex items-center gap-2 font-semibold">
-                        <Image size={20} />
-                        Upload Screenshot
-                      </span>
-                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                    </label>
-                    <p className="text-sm text-gray-600 mt-3">Or paste SMS text below</p>
+                  <div className="flex flex-col items-center gap-3">
+                    <Upload className="text-blue-600" size={32} />
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <label className="cursor-pointer">
+                        <span className="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 inline-flex items-center gap-2 font-semibold">
+                          <Image size={20} />
+                          Upload Screenshot
+                        </span>
+                        <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                      </label>
+
+                      <label className="cursor-pointer">
+                        <span className={`px-6 py-3 rounded-xl inline-flex items-center gap-2 font-semibold transition-all ${
+                          isPdfProcessing
+                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                            : "bg-purple-600 text-white hover:bg-purple-700"
+                        }`}>
+                          <FileText size={20} />
+                          {isPdfProcessing ? "Processing PDF…" : "Upload Bank Statement"}
+                        </span>
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          onChange={handlePdfUpload}
+                          disabled={isPdfProcessing}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-sm text-gray-600">Or paste SMS text below</p>
                   </div>
 
                   {selectedImage && (

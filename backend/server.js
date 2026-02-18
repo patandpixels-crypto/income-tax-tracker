@@ -426,6 +426,77 @@ app.post('/api/extract-text', authenticateToken, async (req, res) => {
   }
 });
 
+// Extract transactions from PDF bank statement
+app.post('/api/extract-pdf', authenticateToken, async (req, res) => {
+  try {
+    const { pdfData } = req.body;
+
+    if (!pdfData) {
+      return res.status(400).json({ error: 'PDF data required' });
+    }
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      messages: [{
+        role: 'user',
+        content: [{
+          type: 'document',
+          source: { type: 'base64', media_type: 'application/pdf', data: pdfData }
+        }, {
+          type: 'text',
+          text: `Analyze this bank statement PDF and extract ALL income/credit transactions.
+
+Return ONLY a valid JSON array. Each object must have:
+- date: string (YYYY-MM-DD format, use the transaction date)
+- amount: number (numeric value only, no currency symbols or commas)
+- description: string (narration or description of the transaction)
+- bank: string (bank name if visible, otherwise empty string)
+- type: string (must be "credit" for all income transactions)
+
+Only include CREDIT/INCOME transactions (money received). Skip all debits, withdrawals, charges, and fees.
+
+If no income transactions are found, return an empty array [].
+
+Return ONLY the JSON array, no explanation or extra text.`
+        }]
+      }]
+    });
+
+    const rawText = message.content
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('');
+
+    // Extract JSON array from response
+    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      return res.json({ success: true, transactions: [] });
+    }
+
+    let transactions = [];
+    try {
+      transactions = JSON.parse(jsonMatch[0]);
+      // Validate and sanitize each transaction
+      transactions = transactions
+        .filter(t => t.amount > 0 && t.type === 'credit')
+        .map(t => ({
+          date: t.date || new Date().toISOString().split('T')[0],
+          amount: parseFloat(t.amount) || 0,
+          description: String(t.description || '').substring(0, 200),
+          bank: String(t.bank || ''),
+        }));
+    } catch {
+      transactions = [];
+    }
+
+    res.json({ success: true, transactions });
+  } catch (error) {
+    console.error('PDF extract error:', error);
+    res.status(500).json({ error: 'Failed to process PDF' });
+  }
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
