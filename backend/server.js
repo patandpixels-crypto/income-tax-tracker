@@ -63,6 +63,18 @@ async function initializeDatabase() {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS bank_statements (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        filename TEXT,
+        period_start TEXT,
+        period_end TEXT,
+        transaction_count INTEGER DEFAULT 0,
+        uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     console.log('✅ Database tables initialized');
   } catch (error) {
     console.error('Database initialization error:', error);
@@ -502,10 +514,79 @@ ${pdfText.substring(0, 15000)}`
       transactions = [];
     }
 
-    res.json({ success: true, transactions });
+    // Detect statement date range
+    const dates = transactions.map(t => t.date).filter(Boolean).sort();
+    const periodStart = dates[0] || null;
+    const periodEnd = dates[dates.length - 1] || null;
+
+    // Check for duplicate transactions already in DB
+    const existingRows = await pool.query(
+      'SELECT date, amount, description FROM transactions WHERE user_id = $1',
+      [req.user.id]
+    );
+    const existingSet = new Set(
+      existingRows.rows.map(t =>
+        `${t.date}|${parseFloat(t.amount).toFixed(2)}|${(t.description || '').toLowerCase().trim()}`
+      )
+    );
+    const transactionsWithFlags = transactions.map(t => ({
+      ...t,
+      isDuplicate: existingSet.has(
+        `${t.date}|${t.amount.toFixed(2)}|${t.description.toLowerCase().trim()}`
+      ),
+    }));
+
+    // Check for overlapping previously uploaded statements
+    const overlapping = periodStart && periodEnd
+      ? await pool.query(
+          `SELECT filename, period_start, period_end, uploaded_at
+           FROM bank_statements
+           WHERE user_id = $1 AND period_start <= $2 AND period_end >= $3
+           ORDER BY uploaded_at DESC`,
+          [req.user.id, periodEnd, periodStart]
+        )
+      : { rows: [] };
+
+    res.json({
+      success: true,
+      transactions: transactionsWithFlags,
+      statementPeriod: { start: periodStart, end: periodEnd },
+      overlappingStatements: overlapping.rows,
+    });
   } catch (error) {
     console.error('PDF extract error:', error?.message || error);
     res.status(500).json({ error: 'Failed to process PDF', detail: error?.message || String(error) });
+  }
+});
+
+// Save a bank statement record after user confirms transactions
+app.post('/api/bank-statements', authenticateToken, async (req, res) => {
+  try {
+    const { filename, periodStart, periodEnd, transactionCount } = req.body;
+    const result = await pool.query(
+      `INSERT INTO bank_statements (user_id, filename, period_start, period_end, transaction_count)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.user.id, filename || 'bank-statement.pdf', periodStart, periodEnd, transactionCount || 0]
+    );
+    res.json({ success: true, statement: result.rows[0] });
+  } catch (error) {
+    console.error('Save statement error:', error?.message);
+    res.status(500).json({ error: 'Failed to save statement record' });
+  }
+});
+
+// List all uploaded bank statements for the user
+app.get('/api/bank-statements', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, filename, period_start, period_end, transaction_count, uploaded_at
+       FROM bank_statements WHERE user_id = $1 ORDER BY uploaded_at DESC`,
+      [req.user.id]
+    );
+    res.json({ success: true, statements: result.rows });
+  } catch (error) {
+    console.error('List statements error:', error?.message);
+    res.status(500).json({ error: 'Failed to load statement history' });
   }
 });
 
