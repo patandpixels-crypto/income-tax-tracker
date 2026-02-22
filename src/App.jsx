@@ -26,6 +26,9 @@ export default function SMSIncomeTracker() {
   const [isPdfProcessing, setIsPdfProcessing] = useState(false);
   const [pdfTransactions, setPdfTransactions] = useState([]);
   const [selectedPdfTxns, setSelectedPdfTxns] = useState({});
+  const [pdfStatementPeriod, setPdfStatementPeriod] = useState(null);
+  const [pdfOverlappingStatements, setPdfOverlappingStatements] = useState([]);
+  const [pdfFilename, setPdfFilename] = useState("");
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
@@ -310,12 +313,15 @@ export default function SMSIncomeTracker() {
         return;
       }
 
-      // Pre-select all transactions
+      // Pre-select only non-duplicates
       const selected = {};
-      data.transactions.forEach((_, i) => { selected[i] = true; });
+      data.transactions.forEach((txn, i) => { selected[i] = !txn.isDuplicate; });
 
+      setPdfFilename(file.name);
       setPdfTransactions(data.transactions);
       setSelectedPdfTxns(selected);
+      setPdfStatementPeriod(data.statementPeriod || null);
+      setPdfOverlappingStatements(data.overlappingStatements || []);
       setShowPdfModal(true);
     } catch (err) {
       setError("Failed to process PDF: " + err.message);
@@ -357,10 +363,25 @@ export default function SMSIncomeTracker() {
         }
       }
 
+      // Save statement record
+      await fetch(`${API_URL}/bank-statements`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({
+          filename: pdfFilename,
+          periodStart: pdfStatementPeriod?.start,
+          periodEnd: pdfStatementPeriod?.end,
+          transactionCount: added.length,
+        }),
+      }).catch(() => {});
+
       setTransactions((prev) => [...added.reverse(), ...prev]);
       setShowPdfModal(false);
       setPdfTransactions([]);
       setSelectedPdfTxns({});
+      setPdfStatementPeriod(null);
+      setPdfOverlappingStatements([]);
+      setPdfFilename("");
       setSuccess(`✅ ${added.length} transaction${added.length !== 1 ? "s" : ""} added from bank statement!`);
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
@@ -876,6 +897,26 @@ export default function SMSIncomeTracker() {
                   We found <span className="font-semibold text-purple-600">{pdfTransactions.length} income transaction{pdfTransactions.length !== 1 ? "s" : ""}</span> in your statement.
                   Select the ones you want to add to your tax calculation.
                 </p>
+                {pdfStatementPeriod?.start && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    📅 Statement period: <span className="font-semibold text-gray-600">{pdfStatementPeriod.start}</span> → <span className="font-semibold text-gray-600">{pdfStatementPeriod.end}</span>
+                  </p>
+                )}
+                {pdfOverlappingStatements.length > 0 && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-300 rounded-xl text-xs text-yellow-800">
+                    ⚠️ <span className="font-semibold">Overlapping statement detected.</span> You previously uploaded a statement covering this period:
+                    <ul className="mt-1 space-y-0.5">
+                      {pdfOverlappingStatements.map((s, i) => (
+                        <li key={i} className="ml-2">• <span className="font-medium">{s.filename}</span> ({s.period_start} → {s.period_end}, {s.transaction_count} txns added on {new Date(s.uploaded_at).toLocaleDateString()})</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {pdfTransactions.some(t => t.isDuplicate) && (
+                  <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-xl text-xs text-orange-700">
+                    🔁 <span className="font-semibold">{pdfTransactions.filter(t => t.isDuplicate).length} transaction{pdfTransactions.filter(t => t.isDuplicate).length !== 1 ? "s" : ""} already exist</span> in your records and have been deselected.
+                  </div>
+                )}
               </div>
 
               {/* Select all toggle */}
@@ -902,7 +943,9 @@ export default function SMSIncomeTracker() {
                   <label
                     key={i}
                     className={`flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      selectedPdfTxns[i]
+                      txn.isDuplicate
+                        ? "border-orange-200 bg-orange-50 opacity-70"
+                        : selectedPdfTxns[i]
                         ? "border-purple-400 bg-purple-50"
                         : "border-gray-200 bg-white hover:border-gray-300"
                     }`}
@@ -915,7 +958,12 @@ export default function SMSIncomeTracker() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start gap-2">
-                        <p className="font-semibold text-gray-900 text-sm truncate">{txn.description || "—"}</p>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <p className="font-semibold text-gray-900 text-sm truncate">{txn.description || "—"}</p>
+                          {txn.isDuplicate && (
+                            <span className="shrink-0 text-xs bg-orange-100 text-orange-600 border border-orange-200 px-2 py-0.5 rounded-full font-medium">Already added</span>
+                          )}
+                        </div>
                         <p className="font-bold text-green-600 whitespace-nowrap">{formatNGN(txn.amount)}</p>
                       </div>
                       <div className="flex gap-3 mt-1 text-xs text-gray-500">
