@@ -386,8 +386,8 @@ export default function DashboardScreen({ navigation }) {
 
         <View style={styles.summaryCard}>
           <Text style={styles.cardTitle}>Annual Income</Text>
-          <Text style={styles.largeAmount}>{formatCurrency(annualIncome)}</Text>
-          <Text style={styles.taxBracket}>Tax Bracket: {taxRate}%</Text>
+          <Text style={styles.largeAmount}>{formatCurrency(totalIncome)}</Text>
+          <Text style={styles.taxBracket}>Tax Bracket: {taxRate.toFixed(2)}%</Text>
         </View>
 
         {!user?.bankAlertName && (
