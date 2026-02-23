@@ -176,6 +176,23 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
+  const handleClassify = async (id, taxCategory, incomeType) => {
+    try {
+      const result = await api.classifyTransaction(id, taxCategory, incomeType);
+      if (result.success) {
+        setTransactions((prev) =>
+          prev.map((t) =>
+            t.id === id
+              ? { ...t, taxCategory: result.transaction.taxCategory, incomeType: result.transaction.incomeType }
+              : t
+          )
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to classify transaction');
+    }
+  };
+
   const handleExportCSV = async () => {
     try {
       if (transactions.length === 0) {
@@ -324,22 +341,21 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
-  // Calculate totals
-  // Treat transactions without type as income (default behavior)
-  const incomeTransactions = transactions.filter((t) => !t.type || t.type === 'income');
-  if (__DEV__) console.log('Income transactions:', incomeTransactions);
-
-  const totalIncome = incomeTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-  if (__DEV__) console.log('Total income calculated:', totalIncome);
-
-  const totalExpenses = transactions
-    .filter((t) => t.type === 'expense')
+  // Calculate totals with tax classification
+  const totalIncome = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const taxableIncome = transactions
+    .filter((t) => t.taxCategory === 'taxable')
     .reduce((sum, t) => sum + (t.amount || 0), 0);
+  const nonTaxableIncome = transactions
+    .filter((t) => t.taxCategory === 'non_taxable')
+    .reduce((sum, t) => sum + (t.amount || 0), 0);
+  const unclassifiedCount = transactions.filter(
+    (t) => !t.taxCategory || t.taxCategory === 'unclassified'
+  ).length;
 
-  const annualIncome = totalIncome;
-  const taxAmount = calculateTax(annualIncome);
-  const netIncome = calculateNetIncome(annualIncome);
-  const taxRate = getEffectiveRate(annualIncome);
+  const taxAmount = calculateTax(taxableIncome);
+  const netIncome = totalIncome - taxAmount;
+  const taxRate = getEffectiveRate(taxableIncome);
 
   if (loading) {
     return (
@@ -423,10 +439,10 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.statAmount}>{formatCurrency(totalIncome)}</Text>
           </View>
 
-          <View style={[styles.statCard, styles.expenseCard]}>
-            <Text style={styles.statIcon}>📉</Text>
-            <Text style={styles.statLabel}>Expenses</Text>
-            <Text style={styles.statAmount}>{formatCurrency(totalExpenses)}</Text>
+          <View style={[styles.statCard, styles.nonTaxableCard]}>
+            <Text style={styles.statIcon}>🛡️</Text>
+            <Text style={styles.statLabel}>Non-Taxable</Text>
+            <Text style={styles.statAmount}>{formatCurrency(nonTaxableIncome)}</Text>
           </View>
         </View>
 
@@ -504,6 +520,13 @@ export default function DashboardScreen({ navigation }) {
 
         <View style={styles.recentTransactions}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
+          {unclassifiedCount > 0 && (
+            <View style={styles.classifyBanner}>
+              <Text style={styles.classifyBannerText}>
+                ⚠️ {unclassifiedCount} transaction{unclassifiedCount !== 1 ? 's' : ''} need classification
+              </Text>
+            </View>
+          )}
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>📊</Text>
@@ -513,29 +536,45 @@ export default function DashboardScreen({ navigation }) {
               </Text>
             </View>
           ) : (
-            transactions.slice(0, 5).map((transaction, index) => (
+            transactions.slice(0, 10).map((transaction, index) => (
               <View key={transaction.id || transaction._id || index} style={styles.transactionItem}>
                 <View style={styles.transactionLeft}>
                   <Text style={styles.transactionIcon}>
-                    {transaction.type === 'income' ? '💵' : '💳'}
+                    {transaction.taxCategory === 'non_taxable' ? '🛡️' : transaction.taxCategory === 'taxable' ? '💵' : '❓'}
                   </Text>
-                  <View>
-                    <Text style={styles.transactionDescription}>
-                      {transaction.description}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.transactionDescription} numberOfLines={1}>
+                      {transaction.description || '—'}
                     </Text>
-                    <Text style={styles.transactionDate}>
-                      {transaction.date && !isNaN(new Date(transaction.date).getTime())
-                        ? new Date(transaction.date).toLocaleDateString()
-                        : 'N/A'}
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <Text style={styles.transactionDate}>
+                        {transaction.date && !isNaN(new Date(transaction.date).getTime())
+                          ? new Date(transaction.date).toLocaleDateString()
+                          : 'N/A'}
+                      </Text>
+                      {transaction.taxCategory === 'taxable' && (
+                        <View style={styles.badgeTaxable}><Text style={styles.badgeTextGreen}>Taxable</Text></View>
+                      )}
+                      {transaction.taxCategory === 'non_taxable' && (
+                        <View style={styles.badgeNonTaxable}><Text style={styles.badgeTextBlue}>Non-Taxable</Text></View>
+                      )}
+                    </View>
+                    {(!transaction.taxCategory || transaction.taxCategory === 'unclassified') && (
+                      <View style={styles.classifyButtons}>
+                        <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'non_taxable', 'gift')}>
+                          <Text style={styles.classifyBtnText}>🎁 Gift</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'non_taxable', 'loan')}>
+                          <Text style={styles.classifyBtnText}>💰 Loan</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'taxable', 'salary')}>
+                          <Text style={styles.classifyBtnText}>💼 Pay</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 </View>
-                <Text
-                  style={[
-                    styles.transactionAmount,
-                    styles.incomeAmount,
-                  ]}
-                >
+                <Text style={[styles.transactionAmount, styles.incomeAmount]}>
                   {formatCurrency(transaction.amount)}
                 </Text>
               </View>
@@ -697,8 +736,8 @@ const styles = StyleSheet.create({
   incomeCard: {
     backgroundColor: '#007AFF',
   },
-  expenseCard: {
-    backgroundColor: '#FF3B30',
+  nonTaxableCard: {
+    backgroundColor: '#5856D6',
   },
   statIcon: {
     fontSize: 28,
@@ -982,5 +1021,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#000',
+  },
+  classifyBanner: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FDBA74',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
+  },
+  classifyBannerText: {
+    fontSize: 13,
+    color: '#C2410C',
+    fontWeight: '600',
+  },
+  badgeTaxable: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  badgeTextGreen: {
+    fontSize: 10,
+    color: '#15803D',
+    fontWeight: '600',
+  },
+  badgeNonTaxable: {
+    backgroundColor: '#DBEAFE',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  badgeTextBlue: {
+    fontSize: 10,
+    color: '#1D4ED8',
+    fontWeight: '600',
+  },
+  classifyButtons: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 6,
+  },
+  classifyBtn: {
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  classifyBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#374151',
   },
 });

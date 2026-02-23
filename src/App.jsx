@@ -614,6 +614,24 @@ export default function SMSIncomeTracker() {
     }
   }
 
+  async function handleClassify(id, taxCategory, incomeType) {
+    try {
+      const response = await fetch(`${API_URL}/transactions/${id}/classify`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
+        body: JSON.stringify({ taxCategory, incomeType }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTransactions((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, taxCategory: data.transaction.taxCategory, incomeType: data.transaction.incomeType } : t))
+        );
+      }
+    } catch {
+      setError("Classification failed");
+    }
+  }
+
   function handleExport() {
     let csv = "Date,Amount,Description,Bank\n";
     transactions.forEach((t) => {
@@ -656,9 +674,17 @@ export default function SMSIncomeTracker() {
   }
 
   const totalIncome = transactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-  const annualTax = calculateTax(totalIncome);
+  const taxableIncome = transactions
+    .filter((t) => t.taxCategory === "taxable")
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const nonTaxableIncome = transactions
+    .filter((t) => t.taxCategory === "non_taxable")
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const unclassifiedIncome = transactions
+    .filter((t) => !t.taxCategory || t.taxCategory === "unclassified")
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const annualTax = calculateTax(taxableIncome);
   const netIncome = totalIncome - annualTax;
-  const effectiveRate = totalIncome > 0 ? (annualTax / totalIncome) * 100 : 0;
 
   const formatNGN = (n) =>
     new Intl.NumberFormat("en-NG", {
@@ -1121,8 +1147,8 @@ export default function SMSIncomeTracker() {
               <p className="text-2xl font-bold text-gray-900">{formatNGN(netIncome)}</p>
             </div>
             <div className="bg-white/95 rounded-3xl p-5 shadow-xl">
-              <p className="text-sm text-gray-500">Effective Rate</p>
-              <p className="text-2xl font-bold text-gray-900">{effectiveRate.toFixed(2)}%</p>
+              <p className="text-sm text-gray-500">Non-Taxable Income</p>
+              <p className="text-2xl font-bold text-blue-600">{formatNGN(nonTaxableIncome)}</p>
             </div>
           </div>
 
@@ -1228,29 +1254,52 @@ export default function SMSIncomeTracker() {
               {transactions.length === 0 ? (
                 <div className="p-4 rounded-xl bg-gray-50 text-gray-600 border border-gray-200">No transactions yet.</div>
               ) : (
+                {transactions.some((t) => !t.taxCategory || t.taxCategory === "unclassified") && (
+                  <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-start gap-2">
+                    <span className="text-orange-500 text-lg">⚠️</span>
+                    <p className="text-sm text-orange-700">
+                      <span className="font-semibold">{transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length} transaction{transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length !== 1 ? "s" : ""}</span> need classification. These couldn't be automatically categorized — please mark them as Gift, Loan, or Pay for Work.
+                    </p>
+                  </div>
+                )}
                 <div className="overflow-auto rounded-xl border border-gray-200">
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr className="text-left text-gray-600">
                         <th className="p-3">Date</th>
+                        <th className="p-3">Description</th>
                         <th className="p-3">Amount</th>
-                        <th className="p-3">Bank</th>
+                        <th className="p-3">Status</th>
                         <th className="p-3 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {transactions.map((t) => (
-                        <tr key={t.id} className="border-t border-gray-200">
+                        <tr key={t.id} className={`border-t border-gray-200 ${(!t.taxCategory || t.taxCategory === "unclassified") ? "bg-orange-50/50" : ""}`}>
                           <td className="p-3 whitespace-nowrap">{t.date}</td>
+                          <td className="p-3 max-w-[200px] truncate text-gray-700">{t.description || "—"}</td>
                           <td className="p-3 whitespace-nowrap font-semibold">{formatNGN(t.amount)}</td>
-                          <td className="p-3 whitespace-nowrap">{t.bank || "-"}</td>
+                          <td className="p-3 whitespace-nowrap">
+                            {t.taxCategory === "taxable" && (
+                              <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium">Taxable</span>
+                            )}
+                            {t.taxCategory === "non_taxable" && (
+                              <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">Non-Taxable</span>
+                            )}
+                            {(!t.taxCategory || t.taxCategory === "unclassified") && (
+                              <div className="flex flex-wrap gap-1">
+                                <button onClick={() => handleClassify(t.id, "non_taxable", "gift")} className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-0.5 rounded-full font-medium transition-colors">🎁 Gift</button>
+                                <button onClick={() => handleClassify(t.id, "non_taxable", "loan")} className="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-2 py-0.5 rounded-full font-medium transition-colors">💰 Loan</button>
+                                <button onClick={() => handleClassify(t.id, "taxable", "salary")} className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-0.5 rounded-full font-medium transition-colors">💼 Pay</button>
+                              </div>
+                            )}
+                          </td>
                           <td className="p-3 text-right">
                             <button
                               onClick={() => handleDelete(t.id)}
                               className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-semibold"
                             >
                               <Trash2 size={16} />
-                              Delete
                             </button>
                           </td>
                         </tr>

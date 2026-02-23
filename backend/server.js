@@ -75,6 +75,10 @@ async function initializeDatabase() {
       )
     `);
 
+    // Add tax classification columns to existing transactions
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS tax_category TEXT DEFAULT 'unclassified'`);
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS income_type TEXT DEFAULT 'other'`);
+
     console.log('✅ Database tables initialized');
   } catch (error) {
     console.error('Database initialization error:', error);
@@ -82,6 +86,58 @@ async function initializeDatabase() {
 }
 
 initializeDatabase();
+
+// Nigerian Tax Act (PITA) - Auto-classify transaction as taxable/non-taxable
+function classifyTransaction(description) {
+  if (!description || description.trim().length < 3) {
+    return { tax_category: 'unclassified', income_type: 'other' };
+  }
+
+  const desc = description.toLowerCase().trim();
+
+  // Non-taxable patterns (gifts, loans, refunds, dividends, pension, gratuity)
+  const nonTaxablePatterns = [
+    { pattern: /\b(gift|birthday|xmas|christmas|wedding|congrat|donation|charity|eid|sallah)\b/, type: 'gift' },
+    { pattern: /\b(loan|borrow|lending|repayment|payback)\b/, type: 'loan' },
+    { pattern: /\b(refund|reversal|chargeback|returned|cashback)\b/, type: 'refund' },
+    { pattern: /\b(dividend|div\b|share\s*profit)\b/, type: 'dividend' },
+    { pattern: /\b(pension|gratuity|retirement|severance)\b/, type: 'pension' },
+    { pattern: /\b(insurance|claim|indemnity)\b/, type: 'insurance' },
+  ];
+
+  for (const { pattern, type } of nonTaxablePatterns) {
+    if (pattern.test(desc)) {
+      return { tax_category: 'non_taxable', income_type: type };
+    }
+  }
+
+  // Taxable patterns (salary, business, commission, rent, freelance)
+  const taxablePatterns = [
+    { pattern: /\b(salary|sal\b|wage|monthly\s*pay|payroll|basic\s*pay)\b/, type: 'salary' },
+    { pattern: /\b(bonus|incentive|allowance|overtime|ot\s*pay)\b/, type: 'salary' },
+    { pattern: /\b(commission|comm\b)\b/, type: 'commission' },
+    { pattern: /\b(freelance|consulting|consult|contract\s*pay|professional\s*fee|service\s*fee)\b/, type: 'business' },
+    { pattern: /\b(rent|rental|lease|tenant)\b/, type: 'rental' },
+    { pattern: /\b(invoice|inv\b|payment\s*for|service\s*charge|fee\s*for)\b/, type: 'business' },
+    { pattern: /\b(business|revenue|sales|profit|earning|income)\b/, type: 'business' },
+    { pattern: /\b(interest\s*(earned|income|payment|credited))\b/, type: 'interest' },
+  ];
+
+  for (const { pattern, type } of taxablePatterns) {
+    if (pattern.test(desc)) {
+      return { tax_category: 'taxable', income_type: type };
+    }
+  }
+
+  // If description is too short or just a name with no context → unclassified
+  const words = desc.split(/\s+/).filter(w => w.length > 1);
+  if (words.length <= 2) {
+    return { tax_category: 'unclassified', income_type: 'other' };
+  }
+
+  // Generic transfer with a narration but no clear category → unclassified
+  return { tax_category: 'unclassified', income_type: 'other' };
+}
 
 // Auth middleware
 function authenticateToken(req, res, next) {
@@ -343,7 +399,9 @@ app.get('/api/transactions', authenticateToken, async (req, res) => {
         amount: t.amount,
         description: t.description,
         bank: t.bank,
-        rawSMS: t.raw_sms
+        rawSMS: t.raw_sms,
+        taxCategory: t.tax_category || 'unclassified',
+        incomeType: t.income_type || 'other'
       }))
     });
   } catch (error) {
@@ -355,26 +413,34 @@ app.get('/api/transactions', authenticateToken, async (req, res) => {
 // Add transaction
 app.post('/api/transactions', authenticateToken, async (req, res) => {
   try {
-    const { date, amount, description, bank, rawSMS } = req.body;
+    const { date, amount, description, bank, rawSMS, taxCategory, incomeType } = req.body;
 
     if (!date || !amount) {
       return res.status(400).json({ error: 'Date and amount required' });
     }
 
+    // Auto-classify if not provided, or use explicit values
+    const classification = (taxCategory && taxCategory !== 'unclassified')
+      ? { tax_category: taxCategory, income_type: incomeType || 'other' }
+      : classifyTransaction(description);
+
     const result = await pool.query(
-      'INSERT INTO transactions (user_id, date, amount, description, bank, raw_sms) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [req.user.userId, date, amount, description, bank, rawSMS]
+      'INSERT INTO transactions (user_id, date, amount, description, bank, raw_sms, tax_category, income_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [req.user.userId, date, amount, description, bank, rawSMS, classification.tax_category, classification.income_type]
     );
 
+    const t = result.rows[0];
     res.status(201).json({
       success: true,
       transaction: {
-        id: result.rows[0].id,
-        date: result.rows[0].date,
-        amount: result.rows[0].amount,
-        description: result.rows[0].description,
-        bank: result.rows[0].bank,
-        rawSMS: result.rows[0].raw_sms
+        id: t.id,
+        date: t.date,
+        amount: t.amount,
+        description: t.description,
+        bank: t.bank,
+        rawSMS: t.raw_sms,
+        taxCategory: t.tax_category,
+        incomeType: t.income_type
       }
     });
   } catch (error) {
@@ -400,6 +466,39 @@ app.delete('/api/transactions/:id', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Delete error:', error);
     res.status(500).json({ error: 'Failed to delete' });
+  }
+});
+
+// Classify/reclassify a transaction (user manual action)
+app.put('/api/transactions/:id/classify', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { taxCategory, incomeType } = req.body;
+
+    if (!taxCategory || !['taxable', 'non_taxable'].includes(taxCategory)) {
+      return res.status(400).json({ error: 'taxCategory must be "taxable" or "non_taxable"' });
+    }
+
+    const result = await pool.query(
+      'UPDATE transactions SET tax_category = $1, income_type = $2 WHERE id = $3 AND user_id = $4 RETURNING *',
+      [taxCategory, incomeType || 'other', id, req.user.userId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
+    const t = result.rows[0];
+    res.json({
+      success: true,
+      transaction: {
+        id: t.id, date: t.date, amount: t.amount, description: t.description,
+        bank: t.bank, rawSMS: t.raw_sms, taxCategory: t.tax_category, incomeType: t.income_type
+      }
+    });
+  } catch (error) {
+    console.error('Classify error:', error);
+    res.status(500).json({ error: 'Failed to classify transaction' });
   }
 });
 
@@ -504,12 +603,18 @@ ${pdfText.substring(0, 15000)}`
       transactions = JSON.parse(jsonMatch[0]);
       transactions = transactions
         .filter(t => t.amount > 0 && t.type === 'credit')
-        .map(t => ({
-          date: t.date || new Date().toISOString().split('T')[0],
-          amount: parseFloat(t.amount) || 0,
-          description: String(t.description || '').substring(0, 200),
-          bank: String(t.bank || ''),
-        }));
+        .map(t => {
+          const desc = String(t.description || '').substring(0, 200);
+          const classification = classifyTransaction(desc);
+          return {
+            date: t.date || new Date().toISOString().split('T')[0],
+            amount: parseFloat(t.amount) || 0,
+            description: desc,
+            bank: String(t.bank || ''),
+            taxCategory: classification.tax_category,
+            incomeType: classification.income_type,
+          };
+        });
     } catch {
       transactions = [];
     }

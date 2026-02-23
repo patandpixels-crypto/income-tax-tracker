@@ -119,6 +119,11 @@ class ApiService {
     return response.data;
   }
 
+  async classifyTransaction(id, taxCategory, incomeType) {
+    const response = await this.api.put(`/transactions/${id}/classify`, { taxCategory, incomeType });
+    return response.data;
+  }
+
   // Image text extraction
   async extractTextFromImage(imageData, mediaType) {
     const response = await this.api.post('/extract-text', {
