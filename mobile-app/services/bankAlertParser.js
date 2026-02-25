@@ -23,13 +23,19 @@ export function parseBankAlert(text, userName = null) {
 
   // Extract description
   const description = extractDescription(cleanedText, bank);
+  const finalDescription = description || (isDebit ? 'Bank debit' : 'Bank credit');
+
+  // Auto-classify for tax purposes
+  const classification = classifyForTax(finalDescription);
 
   return {
     amount,
     type: isDebit ? 'expense' : 'income',
-    description: description || (isDebit ? 'Bank debit' : 'Bank credit'),
+    description: finalDescription,
     bank: bank || 'Unknown Bank',
     date: new Date().toISOString().split('T')[0], // Today's date
+    taxCategory: classification.taxCategory,
+    incomeType: classification.incomeType,
   };
 }
 
@@ -207,4 +213,46 @@ function extractDescription(text, bank) {
   }
 
   return null;
+}
+
+function classifyForTax(description) {
+  if (!description || description.trim().length < 3) {
+    return { taxCategory: 'unclassified', incomeType: 'other' };
+  }
+  const desc = description.toLowerCase().trim();
+
+  // Non-taxable patterns (Nigerian PITA)
+  const nonTaxablePatterns = [
+    { pattern: /\b(gift|birthday|xmas|christmas|wedding|congrat|donation|charity)\b/, type: 'gift' },
+    { pattern: /\b(loan|borrow|lending|repayment|payback)\b/, type: 'loan' },
+    { pattern: /\b(refund|reversal|chargeback|returned|cashback)\b/, type: 'refund' },
+    { pattern: /\b(dividend|div\b|share\s*profit)\b/, type: 'dividend' },
+    { pattern: /\b(pension|gratuity|retirement|severance)\b/, type: 'pension' },
+    { pattern: /\b(insurance|claim|indemnity)\b/, type: 'insurance' },
+  ];
+
+  for (const { pattern, type } of nonTaxablePatterns) {
+    if (pattern.test(desc)) {
+      return { taxCategory: 'non_taxable', incomeType: type };
+    }
+  }
+
+  // Taxable patterns
+  const taxablePatterns = [
+    { pattern: /\b(salary|sal\b|wage|monthly\s*pay|payroll)\b/, type: 'salary' },
+    { pattern: /\b(bonus|incentive|allowance|overtime)\b/, type: 'salary' },
+    { pattern: /\b(commission|comm\b)\b/, type: 'commission' },
+    { pattern: /\b(freelance|consulting|contract\s*pay|professional\s*fee)\b/, type: 'business' },
+    { pattern: /\b(rent|rental|lease|tenant)\b/, type: 'rental' },
+    { pattern: /\b(invoice|payment\s*for|service\s*charge)\b/, type: 'business' },
+    { pattern: /\b(business|revenue|sales|profit|earning|income)\b/, type: 'business' },
+  ];
+
+  for (const { pattern, type } of taxablePatterns) {
+    if (pattern.test(desc)) {
+      return { taxCategory: 'taxable', incomeType: type };
+    }
+  }
+
+  return { taxCategory: 'unclassified', incomeType: 'other' };
 }
