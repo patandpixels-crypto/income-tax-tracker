@@ -49,9 +49,15 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await api.login(email, password);
+      const result = await api.login(email, password);
+      console.log('Login successful:', !!result);
+
+      // Small delay to ensure state is properly saved
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       navigation.replace('Dashboard');
     } catch (error) {
+      console.error('Login failed:', error);
       Alert.alert(
         'Login Failed',
         error?.response?.data?.message || error.message || 'Invalid email or password'

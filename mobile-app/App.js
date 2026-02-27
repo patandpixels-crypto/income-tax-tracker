@@ -29,13 +29,25 @@ export default function App() {
         // Validate token by attempting to fetch user data
         try {
           const userData = await api.getCurrentUser({ validateToken: true });
+          console.log('Token validation successful:', !!userData);
           // If we successfully got user data, user is authenticated
           setIsAuthenticated(!!userData);
         } catch (error) {
           // If validation fails, clear auth state
-          console.log('Token validation failed, clearing auth');
-          await api.logout();
-          setIsAuthenticated(false);
+          console.log('Token validation failed:', error.response?.status || error.message);
+
+          // Only clear auth if it's an actual auth error (401/403)
+          // For network errors, keep them logged in and let Dashboard handle it
+          if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            console.log('Auth token invalid, clearing auth');
+            await api.logout();
+            setIsAuthenticated(false);
+          } else {
+            // Network error or server error - keep them authenticated
+            // Dashboard will handle this gracefully
+            console.log('Network/server error during validation, keeping user authenticated');
+            setIsAuthenticated(true);
+          }
         }
       } else {
         setIsAuthenticated(false);

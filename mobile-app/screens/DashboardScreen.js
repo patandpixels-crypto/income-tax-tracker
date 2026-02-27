@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseBankAlert } from '../services/bankAlertParser';
 import api from '../services/api';
 import {
@@ -47,12 +48,31 @@ export default function DashboardScreen({ navigation }) {
 
   const loadData = useCallback(async () => {
     try {
+      // Check if we have a token first
+      const isAuth = await api.isAuthenticated();
+      if (!isAuth) {
+        console.log('No auth token found, redirecting to login');
+        navigation.replace('Welcome');
+        return;
+      }
+
       const userData = await api.getCurrentUser();
 
-      // If user data is null, token is invalid - redirect to login
+      // If user data is null after having a token, something is wrong
       if (!userData) {
-        console.log('No user data, redirecting to login');
-        navigation.replace('Welcome');
+        console.log('No user data returned but token exists');
+        // Clear auth and redirect
+        await api.logout();
+        Alert.alert(
+          'Session Error',
+          'Unable to load your account. Please login again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.replace('Welcome')
+            }
+          ]
+        );
         return;
       }
 
@@ -78,23 +98,34 @@ export default function DashboardScreen({ navigation }) {
       // If error is authentication-related (401/403), redirect to login
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
         console.log('Authentication error, redirecting to login');
+        await api.logout();
         Alert.alert(
           'Session Expired',
           'Your session has expired. Please login again.',
           [
             {
               text: 'OK',
-              onPress: () => {
-                api.logout();
-                navigation.replace('Welcome');
-              }
+              onPress: () => navigation.replace('Welcome')
             }
           ]
         );
         return;
       }
 
-      // For other errors, just set empty transactions
+      // For other errors (network issues, server errors), show error but keep user logged in
+      console.warn('Non-auth error loading data:', error.message);
+
+      // Try to load cached user data at least
+      try {
+        const cachedUserStr = await AsyncStorage.getItem('userData');
+        if (cachedUserStr) {
+          setUser(JSON.parse(cachedUserStr));
+        }
+      } catch (cacheError) {
+        console.error('Failed to load cached user data:', cacheError);
+      }
+
+      // Set empty transactions on error
       setTransactions([]);
     } finally {
       setLoading(false);
