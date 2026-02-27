@@ -48,6 +48,14 @@ export default function DashboardScreen({ navigation }) {
   const loadData = useCallback(async () => {
     try {
       const userData = await api.getCurrentUser();
+
+      // If user data is null, token is invalid - redirect to login
+      if (!userData) {
+        console.log('No user data, redirecting to login');
+        navigation.replace('Welcome');
+        return;
+      }
+
       setUser(userData);
 
       const response = await api.getTransactions();
@@ -66,11 +74,32 @@ export default function DashboardScreen({ navigation }) {
       if (__DEV__) console.log('Transactions set to state:', transactionsArray.length);
     } catch (error) {
       console.error('Error loading data:', error);
+
+      // If error is authentication-related (401/403), redirect to login
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        console.log('Authentication error, redirecting to login');
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please login again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                api.logout();
+                navigation.replace('Welcome');
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      // For other errors, just set empty transactions
       setTransactions([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigation]);
 
   useEffect(() => {
     loadData();

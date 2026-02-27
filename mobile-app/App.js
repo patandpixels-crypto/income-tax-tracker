@@ -22,8 +22,24 @@ export default function App() {
 
   const checkAuthentication = async () => {
     try {
+      // Check if token exists
       const isAuth = await api.isAuthenticated();
-      setIsAuthenticated(isAuth);
+
+      if (isAuth) {
+        // Validate token by attempting to fetch user data
+        try {
+          const userData = await api.getCurrentUser();
+          // If we successfully got user data, user is authenticated
+          setIsAuthenticated(!!userData);
+        } catch (error) {
+          // If validation fails, clear auth state
+          console.log('Token validation failed, clearing auth');
+          await api.logout();
+          setIsAuthenticated(false);
+        }
+      } else {
+        setIsAuthenticated(false);
+      }
     } catch (error) {
       console.error('Auth check failed:', error);
       setIsAuthenticated(false);

@@ -75,13 +75,25 @@ class ApiService {
 
   async getCurrentUser() {
     try {
-      const userData = await AsyncStorage.getItem('userData');
-      return userData ? JSON.parse(userData) : null;
+      // Fetch fresh user data from the server to validate token
+      const response = await this.api.get('/auth/me');
+      const user = response.data;
+
+      // Update cached user data
+      await AsyncStorage.setItem('userData', JSON.stringify(user));
+
+      return user;
     } catch (error) {
-      console.error('Failed to parse user data:', error);
-      // Clear corrupted data
-      await AsyncStorage.removeItem('userData');
-      return null;
+      // If server request fails, try reading from cache as fallback
+      // This handles offline scenarios
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        return userData ? JSON.parse(userData) : null;
+      } catch (cacheError) {
+        console.error('Failed to parse cached user data:', cacheError);
+        await AsyncStorage.removeItem('userData');
+        return null;
+      }
     }
   }
 
