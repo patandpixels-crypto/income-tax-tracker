@@ -33,6 +33,7 @@ import {
   checkSMSPermission,
   createTransactionFromSMS,
 } from '../services/smsListener';
+import { colors, spacing, typography, borderRadius } from '../theme';
 
 export default function DashboardScreen({ navigation }) {
   const [user, setUser] = useState(null);
@@ -113,7 +114,7 @@ export default function DashboardScreen({ navigation }) {
       // Show toast notification
       if (Platform.OS === 'android') {
         ToastAndroid.show(
-          `💰 Income detected: ${formatCurrency(transactionData.amount)}`,
+          `Income detected: ${formatCurrency(transactionData.amount)}`,
           ToastAndroid.LONG
         );
       }
@@ -126,7 +127,7 @@ export default function DashboardScreen({ navigation }) {
 
       // Show success alert
       Alert.alert(
-        '✅ Income Added!',
+        'Income Added!',
         `${formatCurrency(transactionData.amount)} from ${transactionData.bank} has been automatically added to your income tracker.`,
         [{ text: 'OK' }]
       );
@@ -359,24 +360,34 @@ export default function DashboardScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <LinearGradient
+        colors={[colors.background, colors.backgroundSecondary]}
+        style={styles.loadingContainer}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
+    <LinearGradient
+      colors={[colors.background, colors.backgroundSecondary]}
+      style={styles.container}
+    >
+      <StatusBar style="light" />
       <ScrollView
         style={styles.scrollView}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Welcome back,</Text>
+            <Text style={styles.greeting}>📊 Executive Dashboard</Text>
             <Text style={styles.userName}>{user?.name || 'User'}</Text>
           </View>
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -384,11 +395,18 @@ export default function DashboardScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.summaryCard}>
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.summaryCard}
+        >
           <Text style={styles.cardTitle}>Annual Income</Text>
           <Text style={styles.largeAmount}>{formatCurrency(totalIncome)}</Text>
-          <Text style={styles.taxBracket}>Tax Bracket: {taxRate.toFixed(2)}%</Text>
-        </View>
+          <View style={styles.taxBracketBadge}>
+            <Text style={styles.taxBracket}>Tax Bracket: {taxRate.toFixed(2)}%</Text>
+          </View>
+        </LinearGradient>
 
         {!user?.bankAlertName && (
           <TouchableOpacity
@@ -420,7 +438,6 @@ export default function DashboardScreen({ navigation }) {
 
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.taxCard]}>
-            <Text style={styles.statIcon}>💰</Text>
             <Text style={styles.statLabel}>Tax Owed</Text>
             <Text style={styles.statAmount}>{formatCurrency(taxAmount)}</Text>
           </View>
@@ -459,7 +476,6 @@ export default function DashboardScreen({ navigation }) {
             style={styles.actionButton}
             onPress={handleExportCSV}
           >
-            <Text style={styles.actionButtonIcon}>📊</Text>
             <Text style={styles.actionButtonText}>Export CSV</Text>
           </TouchableOpacity>
         </View>
@@ -470,7 +486,7 @@ export default function DashboardScreen({ navigation }) {
             smsListenerActive ? styles.infoCardSuccess : styles.infoCardWarning
           ]}>
             <Text style={styles.infoTitle}>
-              {smsListenerActive ? '✅ SMS Auto-Detection Active' : '📱 SMS Bank Alert Feature'}
+              {smsListenerActive ? 'SMS Auto-Detection Active' : '📱 SMS Bank Alert Feature'}
             </Text>
             {smsListenerActive ? (
               <Text style={styles.infoTextSuccess}>
@@ -529,7 +545,6 @@ export default function DashboardScreen({ navigation }) {
           )}
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📊</Text>
               <Text style={styles.emptyText}>No transactions yet</Text>
               <Text style={styles.emptySubtext}>
                 Use the web app to add income and expenses
@@ -562,10 +577,10 @@ export default function DashboardScreen({ navigation }) {
                     {(!transaction.taxCategory || transaction.taxCategory === 'unclassified') && (
                       <View style={styles.classifyButtons}>
                         <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'non_taxable', 'gift')}>
-                          <Text style={styles.classifyBtnText}>🎁 Gift</Text>
+                          <Text style={styles.classifyBtnText}>Gift</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'non_taxable', 'loan')}>
-                          <Text style={styles.classifyBtnText}>💰 Loan</Text>
+                          <Text style={styles.classifyBtnText}>Loan</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'taxable', 'salary')}>
                           <Text style={styles.classifyBtnText}>💼 Pay</Text>
@@ -627,13 +642,11 @@ export default function DashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
   },
   scrollView: {
     flex: 1,
@@ -642,246 +655,221 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#FFFFFF',
+    padding: spacing.lg,
+    backgroundColor: colors.cardBackground,
     paddingTop: 50,
-    paddingBottom: 30,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    paddingBottom: spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.cardBorder,
   },
   greeting: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 4,
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    fontWeight: '600',
   },
   userName: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   logoutButton: {
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    backgroundColor: colors.error,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
   },
   logoutText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontWeight: '700',
     fontSize: 14,
   },
   summaryCard: {
-    backgroundColor: '#8B5CF6',
-    margin: 16,
-    padding: 32,
-    borderRadius: 24,
+    margin: spacing.md,
+    padding: spacing.xxl,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
   cardTitle: {
-    fontSize: 16,
-    color: '#fff',
-    marginBottom: 12,
+    fontSize: 14,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
     fontWeight: '600',
+    opacity: 0.9,
   },
   largeAmount: {
-    fontSize: 48,
+    fontSize: 42,
     fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+  },
+  taxBracketBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   taxBracket: {
     fontSize: 14,
-    color: '#8B5CF6',
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    color: colors.textPrimary,
     fontWeight: '700',
   },
   statsGrid: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
   },
   statCard: {
     flex: 1,
-    padding: 20,
-    borderRadius: 20,
-    marginHorizontal: 4,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+    backgroundColor: colors.cardBackground,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    marginHorizontal: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
   taxCard: {
-    backgroundColor: '#FF9500',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.warning,
   },
   netCard: {
-    backgroundColor: '#34C759',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
   incomeCard: {
-    backgroundColor: '#007AFF',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.info,
   },
   nonTaxableCard: {
-    backgroundColor: '#5856D6',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.exempt,
   },
   statIcon: {
-    fontSize: 28,
-    marginBottom: 8,
+    fontSize: 24,
+    marginBottom: spacing.sm,
   },
   statLabel: {
     fontSize: 12,
-    color: '#fff',
-    marginBottom: 6,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
     fontWeight: '600',
   },
   statAmount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.textPrimary,
   },
   actionButtons: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    gap: 12,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#FBBF24',
-    padding: 20,
-    borderRadius: 20,
+    backgroundColor: colors.cardBackground,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
-    elevation: 6,
-    shadowColor: '#FBBF24',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   actionButtonIcon: {
-    fontSize: 32,
-    marginBottom: 8,
+    fontSize: 28,
+    marginBottom: spacing.sm,
   },
   actionButtonText: {
-    color: '#000',
-    fontSize: 14,
+    color: colors.primary,
+    fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
   },
   infoCard: {
-    backgroundColor: '#E0E7FF',
-    margin: 16,
-    padding: 20,
-    borderRadius: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    backgroundColor: colors.cardBackground,
+    margin: spacing.md,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.info,
   },
   infoCardSuccess: {
-    backgroundColor: '#D1FAE5',
+    borderColor: colors.success,
   },
   infoCardWarning: {
-    backgroundColor: '#FEF3C7',
+    borderColor: colors.warning,
   },
   infoTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#4338CA',
-    marginBottom: 8,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   infoText: {
     fontSize: 14,
-    color: '#4B5563',
+    color: colors.textSecondary,
     lineHeight: 22,
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   infoTextSuccess: {
     fontSize: 14,
-    color: '#065F46',
+    color: colors.success,
     lineHeight: 22,
   },
   enableSmsButton: {
-    backgroundColor: '#4338CA',
-    padding: 16,
-    borderRadius: 16,
+    backgroundColor: colors.primary,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
-    marginTop: 8,
-    elevation: 3,
-    shadowColor: '#4338CA',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    marginTop: spacing.sm,
   },
   enableSmsButtonText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
   recentTransactions: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 16,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
   },
   emptyState: {
-    backgroundColor: '#FFFFFF',
-    padding: 40,
-    borderRadius: 20,
+    backgroundColor: colors.cardBackground,
+    padding: spacing.xxl,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
   emptyIcon: {
     fontSize: 56,
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#6B7280',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   transactionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderRadius: 20,
-    marginBottom: 12,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    backgroundColor: colors.cardBackground,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
   transactionLeft: {
     flexDirection: 'row',
@@ -889,194 +877,187 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   transactionIcon: {
-    fontSize: 28,
-    marginRight: 12,
+    fontSize: 24,
+    marginRight: spacing.md,
   },
   transactionDescription: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
   },
   transactionDate: {
     fontSize: 12,
-    color: '#6B7280',
+    color: colors.textSecondary,
   },
   transactionAmount: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   incomeAmount: {
-    color: '#10B981',
+    color: colors.success,
   },
   expenseAmount: {
-    color: '#EF4444',
+    color: colors.error,
   },
   setBankNameButton: {
-    backgroundColor: '#FEF3C7',
-    margin: 16,
-    padding: 20,
-    borderRadius: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    backgroundColor: colors.cardBackground,
+    margin: spacing.md,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.warning,
   },
   setBankNameText: {
     fontSize: 14,
-    color: '#D97706',
+    color: colors.warning,
     fontWeight: '700',
     textAlign: 'center',
   },
   bankNameDisplay: {
-    backgroundColor: '#D1FAE5',
-    margin: 16,
-    padding: 16,
-    borderRadius: 20,
+    backgroundColor: colors.cardBackground,
+    margin: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: colors.success,
   },
   bankNameLabel: {
     fontSize: 14,
-    color: '#065F46',
+    color: colors.textPrimary,
     fontWeight: '600',
   },
   editNameText: {
     fontSize: 14,
-    color: '#DC2626',
+    color: colors.primary,
     fontWeight: 'bold',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.lg,
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 28,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
     width: '100%',
     maxWidth: 400,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 8,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 20,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
     lineHeight: 22,
   },
   modalInput: {
-    backgroundColor: '#F3F4F6',
-    padding: 16,
-    borderRadius: 16,
+    backgroundColor: colors.backgroundSecondary,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
     fontSize: 16,
-    marginBottom: 20,
-    color: '#111827',
+    marginBottom: spacing.lg,
+    color: colors.textPrimary,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: colors.borderLight,
   },
   modalButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: spacing.md,
   },
   modalCancelButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#E5E7EB',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.backgroundSecondary,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   modalCancelText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   modalSaveButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#FBBF24',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary,
     alignItems: 'center',
   },
   modalSaveText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#000',
+    color: colors.textPrimary,
   },
   classifyBanner: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: colors.cardBackground,
     borderWidth: 1,
-    borderColor: '#FDBA74',
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 12,
+    borderColor: colors.warning,
+    borderRadius: borderRadius.sm,
+    padding: spacing.sm,
+    marginBottom: spacing.md,
   },
   classifyBannerText: {
     fontSize: 13,
-    color: '#C2410C',
+    color: colors.warning,
     fontWeight: '600',
   },
   badgeTaxable: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: 'rgba(0, 214, 111, 0.1)',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    borderColor: colors.taxable,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
   },
   badgeTextGreen: {
     fontSize: 10,
-    color: '#15803D',
+    color: colors.taxable,
     fontWeight: '600',
   },
   badgeNonTaxable: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: 'rgba(76, 110, 245, 0.1)',
     borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    borderColor: colors.exempt,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
   },
   badgeTextBlue: {
     fontSize: 10,
-    color: '#1D4ED8',
+    color: colors.exempt,
     fontWeight: '600',
   },
   classifyButtons: {
     flexDirection: 'row',
-    gap: 6,
-    marginTop: 6,
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   classifyBtn: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.backgroundSecondary,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderColor: colors.borderLight,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   classifyBtnText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textPrimary,
   },
 });

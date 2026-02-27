@@ -8,6 +8,7 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import api from './services/api';
+import { colors } from './theme';
 
 const Stack = createStackNavigator();
 
@@ -33,8 +34,8 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F9FA' }}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -46,9 +47,11 @@ export default function App() {
           initialRouteName={isAuthenticated ? "Dashboard" : "Welcome"}
           screenOptions={{
             headerStyle: {
-              backgroundColor: '#2563eb', // blue-600 to match web app
+              backgroundColor: colors.cardBackground,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.cardBorder,
             },
-            headerTintColor: '#fff',
+            headerTintColor: colors.textPrimary,
             headerTitleStyle: {
               fontWeight: 'bold',
             },
@@ -73,7 +76,7 @@ export default function App() {
             name="Dashboard"
             component={DashboardScreen}
             options={{
-              title: 'Tax Dashboard',
+              title: 'Income Tax Tracker',
               headerLeft: () => null
             }}
           />

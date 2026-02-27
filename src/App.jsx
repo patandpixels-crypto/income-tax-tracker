@@ -30,6 +30,9 @@ export default function SMSIncomeTracker() {
   const [pdfOverlappingStatements, setPdfOverlappingStatements] = useState([]);
   const [pdfFilename, setPdfFilename] = useState("");
 
+  const [showClassifyModal, setShowClassifyModal] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
   const [loginEmail, setLoginEmail] = useState("");
@@ -120,7 +123,7 @@ export default function SMSIncomeTracker() {
       setCurrentUser(data.user);
       setIsAuthenticated(true);
 
-      setSuccess("✅ Registration successful!");
+      setSuccess("Registration successful!");
       setTimeout(() => setSuccess(""), 3000);
 
       setRegisterEmail("");
@@ -162,7 +165,7 @@ export default function SMSIncomeTracker() {
       setUserName(data.user?.bankAlertName || "");
       setIsAuthenticated(true);
 
-      setSuccess("✅ Login successful!");
+      setSuccess("Login successful!");
       setTimeout(() => setSuccess(""), 3000);
 
       setLoginEmail("");
@@ -182,7 +185,7 @@ export default function SMSIncomeTracker() {
     setSmsText("");
     setSelectedImage(null);
 
-    setSuccess("✅ Logged out successfully");
+    setSuccess("Logged out successfully");
     setTimeout(() => setSuccess(""), 3000);
   }
 
@@ -215,7 +218,7 @@ export default function SMSIncomeTracker() {
       if (response.ok) {
         setUserName(tempName);
         setShowNameInput(false);
-        setSuccess("✅ Name saved successfully!");
+        setSuccess("Name saved successfully!");
         setTimeout(() => setSuccess(""), 3000);
       } else {
         setError("Failed to save name");
@@ -262,7 +265,7 @@ export default function SMSIncomeTracker() {
 
       const data = await response.json();
       setSmsText(data.text || "");
-      setSuccess('✅ Text extracted! Review and click "Add Transaction".');
+      setSuccess('Text extracted! Review and click "Add Transaction".');
       setTimeout(() => setSuccess(""), 3500);
     } catch (err) {
       console.error("Image error:", err);
@@ -382,7 +385,7 @@ export default function SMSIncomeTracker() {
       setPdfStatementPeriod(null);
       setPdfOverlappingStatements([]);
       setPdfFilename("");
-      setSuccess(`✅ ${added.length} transaction${added.length !== 1 ? "s" : ""} added from bank statement!`);
+      setSuccess(`${added.length} transaction${added.length !== 1 ? "s" : ""} added from bank statement!`);
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
       setError("Failed to add transactions: " + err.message);
@@ -544,7 +547,7 @@ export default function SMSIncomeTracker() {
       setTransactions([data.transaction, ...transactions]);
       setSmsText("");
       setSelectedImage(null);
-      setSuccess("✅ Transaction added!");
+      setSuccess("Transaction added!");
       setTimeout(() => setSuccess(""), 3000);
     } else {
       const errData = await response.json().catch(() => ({}));
@@ -604,7 +607,7 @@ export default function SMSIncomeTracker() {
 
       if (response.ok) {
         setTransactions((prev) => prev.filter((t) => t.id !== id));
-        setSuccess("✅ Deleted");
+        setSuccess("Deleted");
         setTimeout(() => setSuccess(""), 2500);
       } else {
         setError("Delete failed");
@@ -626,9 +629,21 @@ export default function SMSIncomeTracker() {
         setTransactions((prev) =>
           prev.map((t) => (t.id === id ? { ...t, taxCategory: data.transaction.taxCategory, incomeType: data.transaction.incomeType } : t))
         );
+        setShowClassifyModal(false);
+        setSelectedTransaction(null);
+        setSuccess("Transaction classified!");
+        setTimeout(() => setSuccess(""), 2500);
       }
     } catch {
       setError("Classification failed");
+    }
+  }
+
+  function handleTransactionClick(transaction) {
+    // Only show classification popup for unclassified transactions
+    if (!transaction.taxCategory || transaction.taxCategory === "unclassified") {
+      setSelectedTransaction(transaction);
+      setShowClassifyModal(true);
     }
   }
 
@@ -913,6 +928,94 @@ export default function SMSIncomeTracker() {
           </div>
         )}
 
+        {showClassifyModal && selectedTransaction && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg transform transition-all">
+              {/* Header */}
+              <div className="p-6 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-t-3xl">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <span>🏷️</span>
+                  <span>Classify Transaction</span>
+                </h2>
+                <p className="text-white/90 text-sm mt-2">
+                  Help us understand this transaction for accurate tax calculation
+                </p>
+              </div>
+
+              {/* Transaction Details */}
+              <div className="p-6 bg-gray-50 border-b border-gray-200">
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+                  <p className="text-sm text-gray-600 mb-1">Transaction Details</p>
+                  <p className="font-semibold text-gray-900 mb-2">{selectedTransaction.description || "No description"}</p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">📅 {selectedTransaction.date}</span>
+                    <span className="font-bold text-green-600 text-lg">{formatNGN(selectedTransaction.amount)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Classification Options */}
+              <div className="p-6">
+                <p className="text-sm font-semibold text-gray-700 mb-4">Select transaction type:</p>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => handleClassify(selectedTransaction.id, "taxable", "salary")}
+                    className="w-full p-4 rounded-xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 hover:border-green-300 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">💼</span>
+                      <div className="flex-1">
+                        <p className="font-semibold text-green-900 group-hover:text-green-700">Pay for Work</p>
+                        <p className="text-xs text-green-700">Salary, freelance income, or business revenue</p>
+                      </div>
+                      <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-semibold">Taxable</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleClassify(selectedTransaction.id, "non_taxable", "gift")}
+                    className="w-full p-4 rounded-xl border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 hover:border-purple-300 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <p className="font-semibold text-purple-900 group-hover:text-purple-700">Gift</p>
+                        <p className="text-xs text-purple-700">Money received as a gift from family or friends</p>
+                      </div>
+                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full font-semibold">Non-Taxable</span>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => handleClassify(selectedTransaction.id, "non_taxable", "loan")}
+                    className="w-full p-4 rounded-xl border-2 border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50 hover:from-yellow-100 hover:to-amber-100 hover:border-yellow-300 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <p className="font-semibold text-yellow-900 group-hover:text-yellow-700">Loan</p>
+                        <p className="text-xs text-yellow-700">Borrowed money that needs to be repaid</p>
+                      </div>
+                      <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full font-semibold">Non-Taxable</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 pt-0">
+                <button
+                  onClick={() => {
+                    setShowClassifyModal(false);
+                    setSelectedTransaction(null);
+                  }}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {showPdfModal && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
@@ -1134,28 +1237,43 @@ export default function SMSIncomeTracker() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white/95 rounded-3xl p-5 shadow-xl">
-              <p className="text-sm text-gray-500">Total Income</p>
-              <p className="text-2xl font-bold text-gray-900">{formatNGN(totalIncome)}</p>
+            <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-gray-600">Total Income</p>
+              </div>
+              <p className="text-2xl font-bold text-gray-900 mb-1">{formatNGN(totalIncome)}</p>
+              <p className="text-xs text-gray-500">{transactions.length} transaction{transactions.length !== 1 ? "s" : ""}</p>
             </div>
-            <div className="bg-white/95 rounded-3xl p-5 shadow-xl">
-              <p className="text-sm text-gray-500">Estimated Tax</p>
-              <p className="text-2xl font-bold text-gray-900">{formatNGN(annualTax)}</p>
+            <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl p-6 shadow-xl border border-red-100 hover:shadow-2xl transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-red-700">Estimated Tax</p>
+              </div>
+              <p className="text-2xl font-bold text-red-600 mb-1">{formatNGN(annualTax)}</p>
+              <p className="text-xs text-red-600">{((annualTax / totalIncome) * 100 || 0).toFixed(1)}% of total</p>
             </div>
-            <div className="bg-white/95 rounded-3xl p-5 shadow-xl">
-              <p className="text-sm text-gray-500">Net (After Tax)</p>
-              <p className="text-2xl font-bold text-gray-900">{formatNGN(netIncome)}</p>
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-6 shadow-xl border border-green-100 hover:shadow-2xl transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-green-700">Net Income</p>
+              </div>
+              <p className="text-2xl font-bold text-green-600 mb-1">{formatNGN(netIncome)}</p>
+              <p className="text-xs text-green-600">After tax deduction</p>
             </div>
-            <div className="bg-white/95 rounded-3xl p-5 shadow-xl">
-              <p className="text-sm text-gray-500">Non-Taxable Income</p>
-              <p className="text-2xl font-bold text-blue-600">{formatNGN(nonTaxableIncome)}</p>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-6 shadow-xl border border-blue-100 hover:shadow-2xl transition-all">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-blue-700">Non-Taxable</p>
+              </div>
+              <p className="text-2xl font-bold text-blue-600 mb-1">{formatNGN(nonTaxableIncome)}</p>
+              <p className="text-xs text-blue-600">Gifts & loans</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-lg p-6">
-                <h2 className="text-xl font-bold mb-4">📝 Add Transaction</h2>
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <span className="text-2xl">➕</span>
+                  <span>Add Transaction</span>
+                </h2>
 
                 <div className="mb-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-dashed border-blue-200">
                   <div className="flex flex-col items-center gap-3">
@@ -1249,70 +1367,131 @@ export default function SMSIncomeTracker() {
             </div>
 
             <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4">📌 Transactions</h2>
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <span className="text-2xl">💳</span>
+                <span>Transactions</span>
+              </h2>
 
               {transactions.length === 0 ? (
-                <div className="p-4 rounded-xl bg-gray-50 text-gray-600 border border-gray-200">No transactions yet.</div>
+                <div className="p-8 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 text-gray-600 border border-gray-200 text-center">
+                  <p className="text-lg mb-2">No transactions yet</p>
+                  <p className="text-sm text-gray-500">Add your first transaction to get started</p>
+                </div>
               ) : (
-                {transactions.some((t) => !t.taxCategory || t.taxCategory === "unclassified") && (
-                  <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-start gap-2">
-                    <span className="text-orange-500 text-lg">⚠️</span>
-                    <p className="text-sm text-orange-700">
-                      <span className="font-semibold">{transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length} transaction{transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length !== 1 ? "s" : ""}</span> need classification. These couldn't be automatically categorized — please mark them as Gift, Loan, or Pay for Work.
-                    </p>
-                  </div>
-                )}
-                <div className="overflow-auto rounded-xl border border-gray-200">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr className="text-left text-gray-600">
-                        <th className="p-3">Date</th>
-                        <th className="p-3">Description</th>
-                        <th className="p-3">Amount</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {transactions.map((t) => (
-                        <tr key={t.id} className={`border-t border-gray-200 ${(!t.taxCategory || t.taxCategory === "unclassified") ? "bg-orange-50/50" : ""}`}>
-                          <td className="p-3 whitespace-nowrap">{t.date}</td>
-                          <td className="p-3 max-w-[200px] truncate text-gray-700">{t.description || "—"}</td>
-                          <td className="p-3 whitespace-nowrap font-semibold">{formatNGN(t.amount)}</td>
-                          <td className="p-3 whitespace-nowrap">
-                            {t.taxCategory === "taxable" && (
-                              <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium">Taxable</span>
-                            )}
-                            {t.taxCategory === "non_taxable" && (
-                              <span className="text-xs bg-blue-100 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">Non-Taxable</span>
-                            )}
-                            {(!t.taxCategory || t.taxCategory === "unclassified") && (
-                              <div className="flex flex-wrap gap-1">
-                                <button onClick={() => handleClassify(t.id, "non_taxable", "gift")} className="text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 px-2 py-0.5 rounded-full font-medium transition-colors">🎁 Gift</button>
-                                <button onClick={() => handleClassify(t.id, "non_taxable", "loan")} className="text-xs bg-yellow-100 hover:bg-yellow-200 text-yellow-700 px-2 py-0.5 rounded-full font-medium transition-colors">💰 Loan</button>
-                                <button onClick={() => handleClassify(t.id, "taxable", "salary")} className="text-xs bg-green-100 hover:bg-green-200 text-green-700 px-2 py-0.5 rounded-full font-medium transition-colors">💼 Pay</button>
+                <>
+                  {transactions.some((t) => !t.taxCategory || t.taxCategory === "unclassified") && (
+                    <div className="mb-4 p-4 bg-gradient-to-r from-orange-50 to-amber-50 border-l-4 border-orange-400 rounded-xl flex items-start gap-3 shadow-sm">
+                      <span className="text-orange-500 text-xl">⚠️</span>
+                      <div>
+                        <p className="text-sm font-semibold text-orange-900 mb-1">
+                          {transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length} transaction{transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length !== 1 ? "s" : ""} need{transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length === 1 ? "s" : ""} classification
+                        </p>
+                        <p className="text-xs text-orange-700">
+                          Click on unclassified transactions to categorize them as Gift, Loan, or Pay for Work
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                    {transactions.map((t) => {
+                      const isUnclassified = !t.taxCategory || t.taxCategory === "unclassified";
+                      const isTaxable = t.taxCategory === "taxable";
+                      const isNonTaxable = t.taxCategory === "non_taxable";
+
+                      return (
+                        <div
+                          key={t.id}
+                          onClick={() => handleTransactionClick(t)}
+                          className={`relative overflow-hidden rounded-xl border-2 transition-all duration-200 ${
+                            isUnclassified
+                              ? "border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50 hover:border-orange-400 hover:shadow-lg cursor-pointer transform hover:scale-[1.02]"
+                              : isTaxable
+                              ? "border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 hover:border-green-300 hover:shadow-md"
+                              : "border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 hover:border-blue-300 hover:shadow-md"
+                          }`}
+                        >
+                          {/* Status stripe */}
+                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                            isUnclassified ? "bg-orange-400" : isTaxable ? "bg-green-500" : "bg-blue-500"
+                          }`} />
+
+                          <div className="p-4 pl-5">
+                            <div className="flex justify-between items-start gap-3 mb-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 text-sm mb-1 truncate">
+                                  {t.description || "No description"}
+                                </p>
+                                <div className="flex items-center gap-3 text-xs text-gray-600">
+                                  <span className="flex items-center gap-1">
+                                    📅 {t.date}
+                                  </span>
+                                  {t.bank && (
+                                    <span className="flex items-center gap-1">
+                                      🏦 {t.bank}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                <p className="font-bold text-lg text-green-600 mb-1">
+                                  {formatNGN(t.amount)}
+                                </p>
+                                {isTaxable && (
+                                  <span className="inline-block text-[10px] bg-green-500 text-white px-2 py-0.5 rounded-full font-semibold">
+                                    Taxable
+                                  </span>
+                                )}
+                                {isNonTaxable && (
+                                  <span className="inline-block text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-semibold">
+                                    Non-Taxable
+                                  </span>
+                                )}
+                                {isUnclassified && (
+                                  <span className="inline-block text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded-full font-semibold animate-pulse">
+                                    Classify Me
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Income type badge */}
+                            {t.incomeType && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="text-[10px] bg-white/60 text-gray-700 px-2 py-0.5 rounded-full font-medium border border-gray-200">
+                                  {t.incomeType === "gift" && "Gift"}
+                                  {t.incomeType === "loan" && "Loan"}
+                                  {t.incomeType === "salary" && "💼 Salary"}
+                                  {t.incomeType === "freelance" && "💻 Freelance"}
+                                  {t.incomeType === "business" && "🏢 Business"}
+                                </span>
                               </div>
                             )}
-                          </td>
-                          <td className="p-3 text-right">
+
+                            {/* Delete button */}
                             <button
-                              onClick={() => handleDelete(t.id)}
-                              className="inline-flex items-center gap-2 text-red-600 hover:text-red-700 font-semibold"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(t.id);
+                              }}
+                              className="absolute top-3 right-3 p-1.5 rounded-lg bg-white/80 hover:bg-red-50 text-red-500 hover:text-red-600 transition-colors shadow-sm"
+                              title="Delete transaction"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={14} />
                             </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
 
               {transactions.length > 0 && (
-                <div className="mt-4 p-3 rounded-xl bg-gray-50 border border-gray-200">
-                  <p className="text-xs text-gray-600">
-                    Latest: <span className="font-semibold">{transactions[0]?.description || "—"}</span>
+                <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
+                  <p className="text-xs text-gray-700">
+                    <span className="font-semibold text-blue-600">{transactions.length}</span> total transaction{transactions.length !== 1 ? "s" : ""} tracked
                   </p>
                 </div>
               )}

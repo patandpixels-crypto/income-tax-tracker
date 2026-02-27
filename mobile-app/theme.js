@@ -1,33 +1,45 @@
-// Design System - Modern UI Theme
+// Design System - Modern Dark UI Theme
 export const colors = {
   // Primary
   primary: '#00D66F', // Bright green for buttons and accents
   primaryDark: '#00B85C',
+  primaryLight: '#00FF85',
 
-  // Background
-  background: '#F8F9FA',
-  backgroundDark: '#1A1D29', // Dark navy for cards
+  // Background - Dark Theme
+  background: '#0A0E27', // Deep dark blue/black
+  backgroundSecondary: '#131829', // Slightly lighter dark
+  backgroundCard: '#1A1F3A', // Card background
+  backgroundDark: '#0D1226', // Darker variant
 
   // Text
-  textPrimary: '#1F2937',
-  textSecondary: '#6B7280',
-  textLight: '#FFFFFF',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#8B92B2',
+  textTertiary: '#5A6080',
+  textLight: '#E8EAED',
 
   // Status
   success: '#00D66F',
-  warning: '#FBBF24',
-  error: '#EF4444',
-  info: '#3B82F6',
+  warning: '#FFB800',
+  error: '#FF4757',
+  info: '#4C6EF5',
 
   // Tax categories
-  taxable: '#00D66F',
-  nonTaxable: '#3B82F6',
-  unclassified: '#F59E0B',
+  taxable: '#00D66F', // Green
+  exempt: '#4C6EF5', // Blue
+  repayable: '#FFB800', // Yellow/Gold
+  unclassified: '#8B92B2', // Gray
 
   // Cards & Surfaces
-  cardBackground: '#FFFFFF',
-  cardDark: '#1A1D29',
-  border: '#E5E7EB',
+  cardBackground: '#1A1F3A',
+  cardBorder: '#252B48',
+  border: '#252B48',
+  borderLight: '#2F3550',
+
+  // Gradients
+  gradientStart: '#0A0E27',
+  gradientEnd: '#1A1F3A',
+  accentGradientStart: '#00D66F',
+  accentGradientEnd: '#00B85C',
 };
 
 export const spacing = {

@@ -79,7 +79,7 @@ async function initializeDatabase() {
     await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS tax_category TEXT DEFAULT 'unclassified'`);
     await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS income_type TEXT DEFAULT 'other'`);
 
-    console.log('✅ Database tables initialized');
+    console.log('Database tables initialized');
   } catch (error) {
     console.error('Database initialization error:', error);
   }
