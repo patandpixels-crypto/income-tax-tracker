@@ -1254,15 +1254,16 @@ export default function SMSIncomeTracker() {
               {transactions.length === 0 ? (
                 <div className="p-4 rounded-xl bg-gray-50 text-gray-600 border border-gray-200">No transactions yet.</div>
               ) : (
-                {transactions.some((t) => !t.taxCategory || t.taxCategory === "unclassified") && (
-                  <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-start gap-2">
-                    <span className="text-orange-500 text-lg">⚠️</span>
-                    <p className="text-sm text-orange-700">
-                      <span className="font-semibold">{transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length} transaction{transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length !== 1 ? "s" : ""}</span> need classification. These couldn't be automatically categorized — please mark them as Gift, Loan, or Pay for Work.
-                    </p>
-                  </div>
-                )}
-                <div className="overflow-auto rounded-xl border border-gray-200">
+                <>
+                  {transactions.some((t) => !t.taxCategory || t.taxCategory === "unclassified") && (
+                    <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-xl flex items-start gap-2">
+                      <span className="text-orange-500 text-lg">⚠️</span>
+                      <p className="text-sm text-orange-700">
+                        <span className="font-semibold">{transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length} transaction{transactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified").length !== 1 ? "s" : ""}</span> need classification. These couldn't be automatically categorized — please mark them as Gift, Loan, or Pay for Work.
+                      </p>
+                    </div>
+                  )}
+                  <div className="overflow-auto rounded-xl border border-gray-200">
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50">
                       <tr className="text-left text-gray-600">
@@ -1307,6 +1308,7 @@ export default function SMSIncomeTracker() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
 
               {transactions.length > 0 && (
