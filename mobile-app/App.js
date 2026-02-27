@@ -28,7 +28,7 @@ export default function App() {
       if (isAuth) {
         // Validate token by attempting to fetch user data
         try {
-          const userData = await api.getCurrentUser();
+          const userData = await api.getCurrentUser({ validateToken: true });
           // If we successfully got user data, user is authenticated
           setIsAuthenticated(!!userData);
         } catch (error) {

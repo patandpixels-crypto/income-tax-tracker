@@ -73,7 +73,7 @@ class ApiService {
     await AsyncStorage.removeItem('userData');
   }
 
-  async getCurrentUser() {
+  async getCurrentUser(options = { validateToken: false }) {
     try {
       // Fetch fresh user data from the server to validate token
       const response = await this.api.get('/auth/me');
@@ -84,6 +84,11 @@ class ApiService {
 
       return user;
     } catch (error) {
+      // If we're validating the token, don't fall back to cache - throw the error
+      if (options.validateToken) {
+        throw error;
+      }
+
       // If server request fails, try reading from cache as fallback
       // This handles offline scenarios
       try {
