@@ -8,60 +8,74 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, spacing, typography, borderRadius } from '../theme';
 
 export default function WelcomeScreen({ navigation }) {
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={[colors.background, colors.backgroundSecondary]}
+      style={styles.container}
+    >
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar style="dark" />
+        <StatusBar style="light" />
         <View style={styles.content}>
-        <View style={styles.header}>
-          <Image source={require('../assets/icon.png')} style={styles.logo} />
-          <Text style={styles.title}>Income Tax Tracker</Text>
-          <Text style={styles.subtitle}>
-            Track your income and calculate your Nigerian tax obligations
-          </Text>
-        </View>
-
-        <View style={styles.features}>
-          <View style={styles.feature}>
-            <Text style={styles.featureText}>Track Income & Expenses</Text>
+          <View style={styles.header}>
+            <Image source={require('../assets/icon.png')} style={styles.logo} />
+            <Text style={styles.title}>Income Tax Tracker</Text>
+            <Text style={styles.subtitle}>
+              Track your income and calculate your Nigerian tax obligations
+            </Text>
           </View>
-          <View style={styles.feature}>
-            <Text style={styles.featureIcon}>🧮</Text>
-            <Text style={styles.featureText}>Auto Tax Calculation</Text>
+
+          <View style={styles.features}>
+            <View style={styles.feature}>
+              <Text style={styles.featureIcon}>💰</Text>
+              <Text style={styles.featureText}>Track Income & Expenses</Text>
+            </View>
+            <View style={styles.feature}>
+              <Text style={styles.featureIcon}>🧮</Text>
+              <Text style={styles.featureText}>Auto Tax Calculation</Text>
+            </View>
+            <View style={styles.feature}>
+              <Text style={styles.featureIcon}>💬</Text>
+              <Text style={styles.featureText}>SMS Bank Alert Detection</Text>
+            </View>
           </View>
-          <View style={styles.feature}>
-            <Text style={styles.featureIcon}>💬</Text>
-            <Text style={styles.featureText}>SMS Bank Alert Detection</Text>
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => navigation.navigate('Register')}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[colors.primary, colors.primaryDark]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.buttonGradient}
+              >
+                <Text style={styles.primaryButtonText}>Get Started</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => navigation.navigate('Login')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.secondaryButtonText}>Sign In</Text>
+            </TouchableOpacity>
           </View>
         </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate('Register')}
-          >
-            <Text style={styles.primaryButtonText}>Get Started</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={styles.secondaryButtonText}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
       </SafeAreaView>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
   safeArea: {
     flex: 1,
@@ -69,7 +83,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    padding: 24,
+    padding: spacing.xl,
   },
   header: {
     alignItems: 'center',
@@ -78,20 +92,20 @@ const styles = StyleSheet.create({
   logo: {
     width: 120,
     height: 120,
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#111827',
+    ...typography.h1,
+    fontSize: 34,
+    color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: colors.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.lg,
     lineHeight: 24,
   },
   features: {
@@ -100,58 +114,49 @@ const styles = StyleSheet.create({
   feature: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderRadius: 20,
-    marginBottom: 16,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    backgroundColor: colors.cardBackground,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
   },
   featureIcon: {
-    fontSize: 36,
-    marginRight: 16,
+    fontSize: 32,
+    marginRight: spacing.md,
   },
   featureText: {
     fontSize: 16,
-    color: '#111827',
-    fontWeight: '700',
+    color: colors.textPrimary,
+    fontWeight: '600',
   },
   buttonContainer: {
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   primaryButton: {
-    backgroundColor: '#8B5CF6',
-    padding: 20,
-    borderRadius: 20,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+  },
+  buttonGradient: {
+    padding: spacing.lg,
     alignItems: 'center',
-    marginBottom: 16,
-    elevation: 6,
-    shadowColor: '#8B5CF6',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
   },
   primaryButtonText: {
-    color: '#fff',
+    color: colors.textPrimary,
     fontSize: 18,
     fontWeight: 'bold',
   },
   secondaryButton: {
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderRadius: 20,
+    backgroundColor: 'transparent',
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
   },
   secondaryButtonText: {
-    color: '#8B5CF6',
+    color: colors.primary,
     fontSize: 18,
     fontWeight: 'bold',
   },
