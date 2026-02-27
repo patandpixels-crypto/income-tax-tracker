@@ -341,7 +341,6 @@ export default function DashboardScreen({ navigation }) {
           <View style={styles.reconciliationCard}>
             <View style={styles.reconciliationRow}>
               <View style={styles.reconciliationIcon}>
-                <Text style={styles.iconText}>📊</Text>
               </View>
               <View style={styles.reconciliationContent}>
                 <Text style={styles.reconciliationLabel}>Less: Non-tax</Text>
@@ -391,7 +390,7 @@ export default function DashboardScreen({ navigation }) {
             <Text style={styles.actionButtonText}>📸 Upload Alert</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, styles.actionButtonSecondary]} onPress={handleExportCSV}>
-            <Text style={styles.actionButtonTextSecondary}>📊 Export CSV</Text>
+            <Text style={styles.actionButtonTextSecondary}>Export CSV</Text>
           </TouchableOpacity>
         </View>
 
@@ -400,7 +399,6 @@ export default function DashboardScreen({ navigation }) {
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📊</Text>
               <Text style={styles.emptyText}>No transactions yet</Text>
             </View>
           ) : (
@@ -448,13 +446,13 @@ export default function DashboardScreen({ navigation }) {
                       style={styles.classifyBtn}
                       onPress={() => handleClassify(transaction.id, 'non_taxable', 'gift')}
                     >
-                      <Text style={styles.classifyBtnText}>🎁 Gift</Text>
+                      <Text style={styles.classifyBtnText}>Gift</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.classifyBtn}
                       onPress={() => handleClassify(transaction.id, 'non_taxable', 'loan')}
                     >
-                      <Text style={styles.classifyBtnText}>💰 Loan</Text>
+                      <Text style={styles.classifyBtnText}>Loan</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.classifyBtn}
@@ -483,7 +481,6 @@ export default function DashboardScreen({ navigation }) {
           <Text style={styles.navLabel}>Transactions</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
-          <Text style={styles.navIcon}>📊</Text>
           <Text style={styles.navLabel}>Tax Tools</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>

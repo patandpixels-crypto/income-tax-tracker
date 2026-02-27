@@ -113,7 +113,7 @@ export default function DashboardScreen({ navigation }) {
       // Show toast notification
       if (Platform.OS === 'android') {
         ToastAndroid.show(
-          `💰 Income detected: ${formatCurrency(transactionData.amount)}`,
+          `Income detected: ${formatCurrency(transactionData.amount)}`,
           ToastAndroid.LONG
         );
       }
@@ -126,7 +126,7 @@ export default function DashboardScreen({ navigation }) {
 
       // Show success alert
       Alert.alert(
-        '✅ Income Added!',
+        'Income Added!',
         `${formatCurrency(transactionData.amount)} from ${transactionData.bank} has been automatically added to your income tracker.`,
         [{ text: 'OK' }]
       );
@@ -420,7 +420,6 @@ export default function DashboardScreen({ navigation }) {
 
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, styles.taxCard]}>
-            <Text style={styles.statIcon}>💰</Text>
             <Text style={styles.statLabel}>Tax Owed</Text>
             <Text style={styles.statAmount}>{formatCurrency(taxAmount)}</Text>
           </View>
@@ -459,7 +458,6 @@ export default function DashboardScreen({ navigation }) {
             style={styles.actionButton}
             onPress={handleExportCSV}
           >
-            <Text style={styles.actionButtonIcon}>📊</Text>
             <Text style={styles.actionButtonText}>Export CSV</Text>
           </TouchableOpacity>
         </View>
@@ -470,7 +468,7 @@ export default function DashboardScreen({ navigation }) {
             smsListenerActive ? styles.infoCardSuccess : styles.infoCardWarning
           ]}>
             <Text style={styles.infoTitle}>
-              {smsListenerActive ? '✅ SMS Auto-Detection Active' : '📱 SMS Bank Alert Feature'}
+              {smsListenerActive ? 'SMS Auto-Detection Active' : '📱 SMS Bank Alert Feature'}
             </Text>
             {smsListenerActive ? (
               <Text style={styles.infoTextSuccess}>
@@ -529,7 +527,6 @@ export default function DashboardScreen({ navigation }) {
           )}
           {transactions.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📊</Text>
               <Text style={styles.emptyText}>No transactions yet</Text>
               <Text style={styles.emptySubtext}>
                 Use the web app to add income and expenses
@@ -562,10 +559,10 @@ export default function DashboardScreen({ navigation }) {
                     {(!transaction.taxCategory || transaction.taxCategory === 'unclassified') && (
                       <View style={styles.classifyButtons}>
                         <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'non_taxable', 'gift')}>
-                          <Text style={styles.classifyBtnText}>🎁 Gift</Text>
+                          <Text style={styles.classifyBtnText}>Gift</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'non_taxable', 'loan')}>
-                          <Text style={styles.classifyBtnText}>💰 Loan</Text>
+                          <Text style={styles.classifyBtnText}>Loan</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'taxable', 'salary')}>
                           <Text style={styles.classifyBtnText}>💼 Pay</Text>

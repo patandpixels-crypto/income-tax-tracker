@@ -123,7 +123,7 @@ export default function SMSIncomeTracker() {
       setCurrentUser(data.user);
       setIsAuthenticated(true);
 
-      setSuccess("✅ Registration successful!");
+      setSuccess("Registration successful!");
       setTimeout(() => setSuccess(""), 3000);
 
       setRegisterEmail("");
@@ -165,7 +165,7 @@ export default function SMSIncomeTracker() {
       setUserName(data.user?.bankAlertName || "");
       setIsAuthenticated(true);
 
-      setSuccess("✅ Login successful!");
+      setSuccess("Login successful!");
       setTimeout(() => setSuccess(""), 3000);
 
       setLoginEmail("");
@@ -185,7 +185,7 @@ export default function SMSIncomeTracker() {
     setSmsText("");
     setSelectedImage(null);
 
-    setSuccess("✅ Logged out successfully");
+    setSuccess("Logged out successfully");
     setTimeout(() => setSuccess(""), 3000);
   }
 
@@ -218,7 +218,7 @@ export default function SMSIncomeTracker() {
       if (response.ok) {
         setUserName(tempName);
         setShowNameInput(false);
-        setSuccess("✅ Name saved successfully!");
+        setSuccess("Name saved successfully!");
         setTimeout(() => setSuccess(""), 3000);
       } else {
         setError("Failed to save name");
@@ -265,7 +265,7 @@ export default function SMSIncomeTracker() {
 
       const data = await response.json();
       setSmsText(data.text || "");
-      setSuccess('✅ Text extracted! Review and click "Add Transaction".');
+      setSuccess('Text extracted! Review and click "Add Transaction".');
       setTimeout(() => setSuccess(""), 3500);
     } catch (err) {
       console.error("Image error:", err);
@@ -385,7 +385,7 @@ export default function SMSIncomeTracker() {
       setPdfStatementPeriod(null);
       setPdfOverlappingStatements([]);
       setPdfFilename("");
-      setSuccess(`✅ ${added.length} transaction${added.length !== 1 ? "s" : ""} added from bank statement!`);
+      setSuccess(`${added.length} transaction${added.length !== 1 ? "s" : ""} added from bank statement!`);
       setTimeout(() => setSuccess(""), 4000);
     } catch (err) {
       setError("Failed to add transactions: " + err.message);
@@ -547,7 +547,7 @@ export default function SMSIncomeTracker() {
       setTransactions([data.transaction, ...transactions]);
       setSmsText("");
       setSelectedImage(null);
-      setSuccess("✅ Transaction added!");
+      setSuccess("Transaction added!");
       setTimeout(() => setSuccess(""), 3000);
     } else {
       const errData = await response.json().catch(() => ({}));
@@ -607,7 +607,7 @@ export default function SMSIncomeTracker() {
 
       if (response.ok) {
         setTransactions((prev) => prev.filter((t) => t.id !== id));
-        setSuccess("✅ Deleted");
+        setSuccess("Deleted");
         setTimeout(() => setSuccess(""), 2500);
       } else {
         setError("Delete failed");
@@ -631,7 +631,7 @@ export default function SMSIncomeTracker() {
         );
         setShowClassifyModal(false);
         setSelectedTransaction(null);
-        setSuccess("✅ Transaction classified!");
+        setSuccess("Transaction classified!");
         setTimeout(() => setSuccess(""), 2500);
       }
     } catch {
@@ -977,7 +977,6 @@ export default function SMSIncomeTracker() {
                     className="w-full p-4 rounded-xl border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 hover:border-purple-300 transition-all text-left group"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-3xl">🎁</span>
                       <div className="flex-1">
                         <p className="font-semibold text-purple-900 group-hover:text-purple-700">Gift</p>
                         <p className="text-xs text-purple-700">Money received as a gift from family or friends</p>
@@ -991,7 +990,6 @@ export default function SMSIncomeTracker() {
                     className="w-full p-4 rounded-xl border-2 border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50 hover:from-yellow-100 hover:to-amber-100 hover:border-yellow-300 transition-all text-left group"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="text-3xl">💰</span>
                       <div className="flex-1">
                         <p className="font-semibold text-yellow-900 group-hover:text-yellow-700">Loan</p>
                         <p className="text-xs text-yellow-700">Borrowed money that needs to be repaid</p>
@@ -1242,7 +1240,6 @@ export default function SMSIncomeTracker() {
             <div className="bg-gradient-to-br from-white to-gray-50 rounded-3xl p-6 shadow-xl border border-white/20 hover:shadow-2xl transition-all">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold text-gray-600">Total Income</p>
-                <span className="text-2xl">💰</span>
               </div>
               <p className="text-2xl font-bold text-gray-900 mb-1">{formatNGN(totalIncome)}</p>
               <p className="text-xs text-gray-500">{transactions.length} transaction{transactions.length !== 1 ? "s" : ""}</p>
@@ -1250,7 +1247,6 @@ export default function SMSIncomeTracker() {
             <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-3xl p-6 shadow-xl border border-red-100 hover:shadow-2xl transition-all">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold text-red-700">Estimated Tax</p>
-                <span className="text-2xl">📊</span>
               </div>
               <p className="text-2xl font-bold text-red-600 mb-1">{formatNGN(annualTax)}</p>
               <p className="text-xs text-red-600">{((annualTax / totalIncome) * 100 || 0).toFixed(1)}% of total</p>
@@ -1258,7 +1254,6 @@ export default function SMSIncomeTracker() {
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-6 shadow-xl border border-green-100 hover:shadow-2xl transition-all">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold text-green-700">Net Income</p>
-                <span className="text-2xl">✅</span>
               </div>
               <p className="text-2xl font-bold text-green-600 mb-1">{formatNGN(netIncome)}</p>
               <p className="text-xs text-green-600">After tax deduction</p>
@@ -1266,7 +1261,6 @@ export default function SMSIncomeTracker() {
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-3xl p-6 shadow-xl border border-blue-100 hover:shadow-2xl transition-all">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm font-semibold text-blue-700">Non-Taxable</p>
-                <span className="text-2xl">🎁</span>
               </div>
               <p className="text-2xl font-bold text-blue-600 mb-1">{formatNGN(nonTaxableIncome)}</p>
               <p className="text-xs text-blue-600">Gifts & loans</p>
@@ -1466,8 +1460,8 @@ export default function SMSIncomeTracker() {
                             {t.incomeType && (
                               <div className="flex items-center gap-2 mt-2">
                                 <span className="text-[10px] bg-white/60 text-gray-700 px-2 py-0.5 rounded-full font-medium border border-gray-200">
-                                  {t.incomeType === "gift" && "🎁 Gift"}
-                                  {t.incomeType === "loan" && "💰 Loan"}
+                                  {t.incomeType === "gift" && "Gift"}
+                                  {t.incomeType === "loan" && "Loan"}
                                   {t.incomeType === "salary" && "💼 Salary"}
                                   {t.incomeType === "freelance" && "💻 Freelance"}
                                   {t.incomeType === "business" && "🏢 Business"}

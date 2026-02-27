@@ -25,7 +25,6 @@ export default function WelcomeScreen({ navigation }) {
 
         <View style={styles.features}>
           <View style={styles.feature}>
-            <Text style={styles.featureIcon}>📊</Text>
             <Text style={styles.featureText}>Track Income & Expenses</Text>
           </View>
           <View style={styles.feature}>
