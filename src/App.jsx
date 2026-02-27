@@ -34,6 +34,7 @@ export default function SMSIncomeTracker() {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showLogin, setShowLogin] = useState(true);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -58,7 +59,7 @@ export default function SMSIncomeTracker() {
     try {
       const token = localStorage.getItem("authToken");
       if (!token) {
-        setIsLoading(false);
+        setIsCheckingAuth(false);
         return;
       }
       const response = await fetch(`${API_URL}/auth/me`, {
@@ -78,7 +79,7 @@ export default function SMSIncomeTracker() {
       console.error("Auth check error:", err);
       localStorage.removeItem("authToken");
     } finally {
-      setIsLoading(false);
+      setIsCheckingAuth(false);
     }
   }
 
@@ -478,6 +479,18 @@ export default function SMSIncomeTracker() {
   }
 
   const stats = calculateStats();
+
+  // LOADING STATE - Checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-400 text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // LOGIN/REGISTER SCREEN
   if (!isAuthenticated) {
