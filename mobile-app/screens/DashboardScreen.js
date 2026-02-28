@@ -193,6 +193,8 @@ export default function DashboardScreen({ navigation }) {
   // Handle detected transaction from SMS
   const handleTransactionDetected = async (transactionData, message) => {
     try {
+      console.log('[SMS] Transaction detected from bank alert:', transactionData);
+
       // Show toast notification
       if (Platform.OS === 'android') {
         ToastAndroid.show(
@@ -202,12 +204,16 @@ export default function DashboardScreen({ navigation }) {
       }
 
       // Create transaction automatically
+      console.log('[SMS] Creating transaction from SMS...');
       await createTransactionFromSMS(transactionData);
+      console.log('[SMS] Transaction created successfully');
 
       // Reload transactions to show the new one
+      console.log('[SMS] Reloading transactions from server...');
       const response = await api.getTransactions();
       const transactionsData = response.transactions || response;
       const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+      console.log('[SMS] Transactions reloaded, count:', transactionsArray.length);
       setTransactions(transactionsArray);
 
       // Show success alert
@@ -216,11 +222,19 @@ export default function DashboardScreen({ navigation }) {
         `${formatCurrency(transactionData.amount)} from ${transactionData.bank} has been automatically added to your income tracker.`,
         [{ text: 'OK' }]
       );
+      console.log('[SMS] Transaction successfully added via SMS');
     } catch (error) {
-      console.error('Failed to handle detected transaction:', error);
+      console.error('[SMS] Failed to handle detected transaction:', error);
+      console.error('[SMS] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+
+      const errorMsg = error.response?.data?.error || error.message || 'Unknown error';
       Alert.alert(
         'Error',
-        'Failed to automatically add transaction: ' + error.message
+        `Failed to automatically add transaction: ${errorMsg}`
       );
     }
   };
@@ -296,8 +310,18 @@ export default function DashboardScreen({ navigation }) {
 
   const handleClassify = async (id, taxCategory, incomeType) => {
     try {
+      if (!id) {
+        console.error('[Classify] Transaction ID is missing');
+        Alert.alert('Error', 'Transaction ID is missing. Please refresh and try again.');
+        return;
+      }
+
+      console.log('[Classify] Classifying transaction:', { id, taxCategory, incomeType });
       const result = await api.classifyTransaction(id, taxCategory, incomeType);
+      console.log('[Classify] API response:', result);
+
       if (result.success) {
+        // Update local state
         setTransactions((prev) =>
           prev.map((t) =>
             t.id === id
@@ -305,9 +329,32 @@ export default function DashboardScreen({ navigation }) {
               : t
           )
         );
+
+        // Show success feedback
+        const categoryLabel = taxCategory === 'taxable' ? 'Taxable' : 'Non-Taxable';
+        const typeLabel = incomeType === 'gift' ? 'Gift' : incomeType === 'loan' ? 'Loan' : incomeType === 'salary' ? 'Salary' : incomeType;
+
+        if (Platform.OS === 'android') {
+          ToastAndroid.show(`✓ Classified as ${categoryLabel} (${typeLabel})`, ToastAndroid.SHORT);
+        } else {
+          Alert.alert('Success', `Transaction classified as ${categoryLabel} (${typeLabel})`);
+        }
+
+        console.log('[Classify] Transaction classified successfully');
+      } else {
+        console.error('[Classify] API returned success: false');
+        Alert.alert('Error', 'Failed to classify transaction. Please try again.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to classify transaction');
+      console.error('[Classify] Error:', error);
+      console.error('[Classify] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to classify transaction';
+      Alert.alert('Error', errorMsg);
     }
   };
 
@@ -428,26 +475,40 @@ export default function DashboardScreen({ navigation }) {
             onPress: async () => {
               try {
                 // Create the transaction
-                if (__DEV__) console.log('Creating transaction:', transactionData);
+                console.log('[AddTransaction] Creating transaction from image:', transactionData);
                 const createdTransaction = await api.createTransaction(transactionData);
-                if (__DEV__) console.log('Transaction created:', createdTransaction);
+                console.log('[AddTransaction] Transaction created successfully:', createdTransaction);
 
-                // Reload transactions
-                if (__DEV__) console.log('Reloading transactions...');
+                if (!createdTransaction || !createdTransaction.transaction) {
+                  throw new Error('Invalid response from server');
+                }
+
+                // Reload transactions from server
+                console.log('[AddTransaction] Reloading transactions from server...');
                 const response = await api.getTransactions();
+                console.log('[AddTransaction] Transactions response:', response);
+
                 const transactionsData = response.transactions || response;
                 const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+                console.log('[AddTransaction] Setting transactions, count:', transactionsArray.length);
                 setTransactions(transactionsArray);
-                if (__DEV__) console.log('Transactions reloaded');
 
                 Alert.alert(
                   'Success!',
                   `Income of ${formatCurrency(transactionData.amount)} added successfully!`,
                   [{ text: 'OK' }]
                 );
+                console.log('[AddTransaction] Transaction added and list updated successfully');
               } catch (error) {
-                console.error('Create transaction error:', error);
-                Alert.alert('Error', 'Failed to create transaction: ' + error.message);
+                console.error('[AddTransaction] Error:', error);
+                console.error('[AddTransaction] Error details:', {
+                  message: error.message,
+                  response: error.response?.data,
+                  status: error.response?.status
+                });
+
+                const errorMsg = error.response?.data?.error || error.message || 'Failed to create transaction';
+                Alert.alert('Error', `Failed to create transaction: ${errorMsg}`);
               } finally {
                 setLoading(false);
               }
@@ -540,20 +601,29 @@ export default function DashboardScreen({ navigation }) {
                 let successCount = 0;
                 let failCount = 0;
 
+                console.log('[PDFUpload] Adding', newTransactions.length, 'new transactions...');
+
                 for (const transaction of newTransactions) {
                   try {
-                    await api.createTransaction(transaction);
+                    console.log('[PDFUpload] Creating transaction:', transaction);
+                    const result = await api.createTransaction(transaction);
+                    console.log('[PDFUpload] Transaction created:', result);
                     successCount++;
                   } catch (err) {
-                    console.error('Failed to create transaction:', err);
+                    console.error('[PDFUpload] Failed to create transaction:', err);
+                    console.error('[PDFUpload] Transaction data:', transaction);
                     failCount++;
                   }
                 }
 
-                // Reload transactions
+                console.log('[PDFUpload] Import complete. Success:', successCount, 'Failed:', failCount);
+
+                // Reload transactions from server
+                console.log('[PDFUpload] Reloading transactions from server...');
                 const transactionsResponse = await api.getTransactions();
                 const transactionsData = transactionsResponse.transactions || transactionsResponse;
                 const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+                console.log('[PDFUpload] Transactions reloaded, count:', transactionsArray.length);
                 setTransactions(transactionsArray);
 
                 // Show result
@@ -867,13 +937,13 @@ export default function DashboardScreen({ navigation }) {
                     </View>
                     {(!transaction.taxCategory || transaction.taxCategory === 'unclassified') && (
                       <View style={styles.classifyButtons}>
-                        <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'non_taxable', 'gift')}>
+                        <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id || transaction._id, 'non_taxable', 'gift')}>
                           <Text style={styles.classifyBtnText}>Gift</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'non_taxable', 'loan')}>
+                        <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id || transaction._id, 'non_taxable', 'loan')}>
                           <Text style={styles.classifyBtnText}>Loan</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id, 'taxable', 'salary')}>
+                        <TouchableOpacity style={styles.classifyBtn} onPress={() => handleClassify(transaction.id || transaction._id, 'taxable', 'salary')}>
                           <Text style={styles.classifyBtnText}>💼 Pay</Text>
                         </TouchableOpacity>
                       </View>
