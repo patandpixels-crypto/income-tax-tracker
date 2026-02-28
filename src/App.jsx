@@ -36,6 +36,43 @@ function calculateTax(income) {
   return tax;
 }
 
+// Filter function to identify expense/debit transactions
+// Returns true if transaction is INCOME, false if it's expense/debit
+function isIncomeTransaction(description) {
+  if (!description) return true; // Keep transactions without description
+
+  const lowerDesc = description.toLowerCase();
+
+  // Keywords that indicate expense/debit transactions
+  const expenseKeywords = [
+    'withdrawal',
+    'withdraw',
+    'debited',
+    'debit',
+    'dr ',
+    ' dr',
+    'transfer from',
+    'payment to',
+    'paid to',
+    'sent to',
+    'deducted',
+    'charged',
+    'purchase',
+    'bill payment',
+    'airtime',
+    'data bundle'
+  ];
+
+  // Check if description contains any expense keywords
+  for (const keyword of expenseKeywords) {
+    if (lowerDesc.includes(keyword)) {
+      return false; // This is an expense transaction
+    }
+  }
+
+  return true; // This is an income transaction
+}
+
 export default function SMSIncomeTracker() {
   const [smsText, setSmsText] = useState("");
   const [transactions, setTransactions] = useState([]);
@@ -210,7 +247,12 @@ export default function SMSIncomeTracker() {
       });
       if (response.ok) {
         const data = await response.json();
-        setTransactions(data.transactions || []);
+        // Filter to show only income transactions (exclude expenses/debits)
+        const allTransactions = data.transactions || [];
+        const incomeTransactions = allTransactions.filter(txn =>
+          isIncomeTransaction(txn.description)
+        );
+        setTransactions(incomeTransactions);
       }
     } catch (err) {
       console.error("Failed to load transactions:", err);
@@ -467,7 +509,7 @@ export default function SMSIncomeTracker() {
     if (!authToken || !tempName.trim()) return;
 
     try {
-      const response = await fetch(`${API_URL}/auth/update-name`, {
+      const response = await fetch(`${API_URL}/auth/bank-name`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
