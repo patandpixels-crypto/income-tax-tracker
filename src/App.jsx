@@ -8,6 +8,34 @@ function escapeRegExp(str = "") {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Nigerian Tax Brackets - Progressive Taxation
+const TAX_BRACKETS = [
+  { limit: 800000, rate: 0 },
+  { limit: 3000000, rate: 0.15 },
+  { limit: 12000000, rate: 0.18 },
+  { limit: 25000000, rate: 0.21 },
+  { limit: 50000000, rate: 0.23 },
+  { limit: Infinity, rate: 0.25 },
+];
+
+function calculateTax(income) {
+  if (income <= 0) return 0;
+
+  let tax = 0;
+  let previousLimit = 0;
+
+  for (const bracket of TAX_BRACKETS) {
+    if (income <= bracket.limit) {
+      tax += Math.max(0, income - previousLimit) * bracket.rate;
+      break;
+    } else {
+      tax += (bracket.limit - previousLimit) * bracket.rate;
+      previousLimit = bracket.limit;
+    }
+  }
+  return tax;
+}
+
 export default function SMSIncomeTracker() {
   const [smsText, setSmsText] = useState("");
   const [transactions, setTransactions] = useState([]);
@@ -468,12 +496,14 @@ export default function SMSIncomeTracker() {
     const nonTaxableTotal = nonTaxable.reduce((sum, t) => sum + t.amount, 0);
     const unclassifiedTotal = unclassified.reduce((sum, t) => sum + t.amount, 0);
     const totalIncome = txns.reduce((sum, t) => sum + t.amount, 0);
+    const taxLiability = calculateTax(taxableTotal);
 
     return {
       taxableTotal,
       nonTaxableTotal,
       unclassifiedTotal,
       totalIncome,
+      taxLiability,
       taxableCount: taxable.length,
       nonTaxableCount: nonTaxable.length,
       unclassifiedCount: unclassified.length,
@@ -973,7 +1003,7 @@ export default function SMSIncomeTracker() {
 
       {/* Stats Cards */}
       <div className="max-w-7xl mx-auto mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Income */}
           <div className="glass-card p-6 shadow-dark">
             <div className="flex items-center justify-between mb-3">
@@ -1008,6 +1038,18 @@ export default function SMSIncomeTracker() {
             </div>
             <p className="text-3xl font-bold text-purple-400 mb-1">{formatNGN(stats.nonTaxableTotal)}</p>
             <p className="text-sm text-gray-400">{stats.nonTaxableCount} transactions</p>
+          </div>
+
+          {/* Tax Liability */}
+          <div className="glass-card p-6 shadow-dark">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wide">Tax Liability</h3>
+              <div className="icon-badge bg-red-500/20">
+                <FileText className="text-red-400" size={20} />
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-red-400 mb-1">{formatNGN(stats.taxLiability)}</p>
+            <p className="text-sm text-gray-400">Tax to pay</p>
           </div>
         </div>
 
