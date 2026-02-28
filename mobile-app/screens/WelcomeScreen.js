@@ -21,7 +21,7 @@ export default function WelcomeScreen({ navigation }) {
         <StatusBar style="light" />
         <View style={styles.content}>
           <View style={styles.header}>
-            <Image source={require('../assets/icon.png')} style={styles.logo} />
+            <Image source={require('../assets/logo.png')} style={styles.logo} />
             <Text style={styles.title}>Income Tax Tracker</Text>
             <Text style={styles.subtitle}>
               Track your income and calculate your Nigerian tax obligations
