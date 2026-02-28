@@ -13,13 +13,8 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-// import * as Google from 'expo-auth-session/providers/google';
-// import * as WebBrowser from 'expo-web-browser';
-// import Constants from 'expo-constants';
-import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { colors, spacing, typography, borderRadius } from '../theme';
-
-// WebBrowser.maybeCompleteAuthSession();
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -27,6 +22,7 @@ export default function RegisterScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { register } = useAuth();
 
   // Temporarily disabled for Expo Go compatibility
   // const [request, response, promptAsync] = Google.useAuthRequest({
@@ -60,20 +56,15 @@ export default function RegisterScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const result = await api.register(name, email, password);
-      console.log('Registration successful:', !!result);
+      await register(name, email, password);
+      console.log('[RegisterScreen] Registration successful, auth state updated');
 
-      // Small delay to ensure state is properly saved
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Show success message
+      Alert.alert('Success', 'Account created successfully!');
 
-      Alert.alert('Success', 'Account created successfully!', [
-        {
-          text: 'OK',
-          onPress: () => navigation.replace('Dashboard'),
-        },
-      ]);
+      // Navigation will happen automatically via AuthContext state change
     } catch (error) {
-      console.error('Registration failed:', error);
+      console.error('[RegisterScreen] Registration failed:', error);
       Alert.alert(
         'Registration Failed',
         error?.response?.data?.message || error.message || 'Could not create account'

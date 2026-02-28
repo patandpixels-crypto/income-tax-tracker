@@ -8,6 +8,71 @@ function escapeRegExp(str = "") {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Nigerian Tax Brackets - Progressive Taxation
+const TAX_BRACKETS = [
+  { limit: 800000, rate: 0 },
+  { limit: 3000000, rate: 0.15 },
+  { limit: 12000000, rate: 0.18 },
+  { limit: 25000000, rate: 0.21 },
+  { limit: 50000000, rate: 0.23 },
+  { limit: Infinity, rate: 0.25 },
+];
+
+function calculateTax(income) {
+  if (income <= 0) return 0;
+
+  let tax = 0;
+  let previousLimit = 0;
+
+  for (const bracket of TAX_BRACKETS) {
+    if (income <= bracket.limit) {
+      tax += Math.max(0, income - previousLimit) * bracket.rate;
+      break;
+    } else {
+      tax += (bracket.limit - previousLimit) * bracket.rate;
+      previousLimit = bracket.limit;
+    }
+  }
+  return tax;
+}
+
+// Filter function to identify expense/debit transactions
+// Returns true if transaction is INCOME, false if it's expense/debit
+function isIncomeTransaction(description) {
+  if (!description) return true; // Keep transactions without description
+
+  const lowerDesc = description.toLowerCase();
+
+  // Keywords that indicate expense/debit transactions
+  const expenseKeywords = [
+    'withdrawal',
+    'withdraw',
+    'debited',
+    'debit',
+    'dr ',
+    ' dr',
+    'transfer from',
+    'payment to',
+    'paid to',
+    'sent to',
+    'deducted',
+    'charged',
+    'purchase',
+    'bill payment',
+    'airtime',
+    'data bundle'
+  ];
+
+  // Check if description contains any expense keywords
+  for (const keyword of expenseKeywords) {
+    if (lowerDesc.includes(keyword)) {
+      return false; // This is an expense transaction
+    }
+  }
+
+  return true; // This is an income transaction
+}
+
 export default function SMSIncomeTracker() {
   const [smsText, setSmsText] = useState("");
   const [transactions, setTransactions] = useState([]);
@@ -182,7 +247,12 @@ export default function SMSIncomeTracker() {
       });
       if (response.ok) {
         const data = await response.json();
-        setTransactions(data);
+        // Filter to show only income transactions (exclude expenses/debits)
+        const allTransactions = data.transactions || [];
+        const incomeTransactions = allTransactions.filter(txn =>
+          isIncomeTransaction(txn.description)
+        );
+        setTransactions(incomeTransactions);
       }
     } catch (err) {
       console.error("Failed to load transactions:", err);
@@ -281,15 +351,26 @@ export default function SMSIncomeTracker() {
     setSelectedPdfTxns({});
     setPdfFilename(file.name);
 
-    const formData = new FormData();
-    formData.append("pdf", file);
-    if (userName) formData.append("userName", userName);
-
     try {
-      const response = await fetch(`${API_URL}/transactions/upload-pdf`, {
+      // Convert PDF file to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise((resolve, reject) => {
+        reader.onload = () => {
+          const base64String = reader.result.split(',')[1]; // Remove data:application/pdf;base64, prefix
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+      });
+      reader.readAsDataURL(file);
+      const pdfData = await base64Promise;
+
+      const response = await fetch(`${API_URL}/extract-pdf`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${authToken}` },
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ pdfData }),
       });
 
       const data = await response.json();
@@ -428,7 +509,7 @@ export default function SMSIncomeTracker() {
     if (!authToken || !tempName.trim()) return;
 
     try {
-      const response = await fetch(`${API_URL}/auth/update-name`, {
+      const response = await fetch(`${API_URL}/auth/bank-name`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -457,24 +538,29 @@ export default function SMSIncomeTracker() {
   }
 
   function calculateStats() {
-    const taxable = transactions.filter((t) => t.tax_status === "taxable");
-    const nonTaxable = transactions.filter((t) => t.tax_status === "non_taxable");
-    const unclassified = transactions.filter((t) => !t.tax_status || t.tax_status === "unclassified");
+    // Ensure transactions is an array to prevent crashes
+    const txns = Array.isArray(transactions) ? transactions : [];
+
+    const taxable = txns.filter((t) => t.tax_status === "taxable");
+    const nonTaxable = txns.filter((t) => t.tax_status === "non_taxable");
+    const unclassified = txns.filter((t) => !t.tax_status || t.tax_status === "unclassified");
 
     const taxableTotal = taxable.reduce((sum, t) => sum + t.amount, 0);
     const nonTaxableTotal = nonTaxable.reduce((sum, t) => sum + t.amount, 0);
     const unclassifiedTotal = unclassified.reduce((sum, t) => sum + t.amount, 0);
-    const totalIncome = transactions.reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = txns.reduce((sum, t) => sum + t.amount, 0);
+    const taxLiability = calculateTax(taxableTotal);
 
     return {
       taxableTotal,
       nonTaxableTotal,
       unclassifiedTotal,
       totalIncome,
+      taxLiability,
       taxableCount: taxable.length,
       nonTaxableCount: nonTaxable.length,
       unclassifiedCount: unclassified.length,
-      totalCount: transactions.length,
+      totalCount: txns.length,
     };
   }
 
@@ -502,7 +588,7 @@ export default function SMSIncomeTracker() {
             <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-gradient-purple p-3 shadow-dark-lg">
               <img src={logo} alt="Logo" className="h-full w-full object-contain brightness-0 invert" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">NairaTax</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">Income Tax Tracker</h1>
             <p className="text-gray-400">Smart Income & Tax Tracking</p>
           </div>
 
@@ -917,8 +1003,8 @@ export default function SMSIncomeTracker() {
               <img src={logo} alt="Logo" className="h-full w-full object-contain brightness-0 invert" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">NairaTax</h1>
-              <p className="text-sm text-gray-400">Income & Tax Tracker</p>
+              <h1 className="text-2xl font-bold text-white">Income Tax Tracker</h1>
+              <p className="text-sm text-gray-400">Smart Income & Tax Tracking</p>
             </div>
           </div>
 
@@ -970,7 +1056,7 @@ export default function SMSIncomeTracker() {
 
       {/* Stats Cards */}
       <div className="max-w-7xl mx-auto mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Income */}
           <div className="glass-card p-6 shadow-dark">
             <div className="flex items-center justify-between mb-3">
@@ -1005,6 +1091,18 @@ export default function SMSIncomeTracker() {
             </div>
             <p className="text-3xl font-bold text-purple-400 mb-1">{formatNGN(stats.nonTaxableTotal)}</p>
             <p className="text-sm text-gray-400">{stats.nonTaxableCount} transactions</p>
+          </div>
+
+          {/* Tax Liability */}
+          <div className="glass-card p-6 shadow-dark">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wide">Tax Liability</h3>
+              <div className="icon-badge bg-red-500/20">
+                <FileText className="text-red-400" size={20} />
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-red-400 mb-1">{formatNGN(stats.taxLiability)}</p>
+            <p className="text-sm text-gray-400">Tax to pay</p>
           </div>
         </div>
 
@@ -1131,7 +1229,7 @@ export default function SMSIncomeTracker() {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
                 <p className="text-gray-400 mt-4">Loading transactions...</p>
               </div>
-            ) : transactions.length === 0 ? (
+            ) : !Array.isArray(transactions) || transactions.length === 0 ? (
               <div className="text-center py-12">
                 <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-dark-600/50 flex items-center justify-center">
                   <FileText className="text-gray-500" size={32} />

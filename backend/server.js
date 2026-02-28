@@ -449,6 +449,81 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
   }
 });
 
+// Bulk add transactions
+app.post('/api/transactions/bulk', authenticateToken, async (req, res) => {
+  try {
+    const { transactions: txns, statementPeriod, filename } = req.body;
+
+    if (!Array.isArray(txns) || txns.length === 0) {
+      return res.status(400).json({ error: 'Transactions array required' });
+    }
+
+    const results = [];
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const txn of txns) {
+      try {
+        const { date, amount, description, bank, rawSMS, taxCategory, incomeType } = txn;
+
+        if (!date || !amount) {
+          failCount++;
+          continue;
+        }
+
+        // Auto-classify if not provided, or use explicit values
+        const classification = (taxCategory && taxCategory !== 'unclassified')
+          ? { tax_category: taxCategory, income_type: incomeType || 'other' }
+          : classifyTransaction(description);
+
+        const result = await pool.query(
+          'INSERT INTO transactions (user_id, date, amount, description, bank, raw_sms, tax_category, income_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+          [req.user.userId, date, amount, description, bank, rawSMS || null, classification.tax_category, classification.income_type]
+        );
+
+        results.push(result.rows[0]);
+        successCount++;
+      } catch (err) {
+        console.error('Failed to insert transaction:', err);
+        failCount++;
+      }
+    }
+
+    // If statement period info is provided, save the bank statement record
+    if (successCount > 0 && statementPeriod && filename) {
+      try {
+        await pool.query(
+          `INSERT INTO bank_statements (user_id, filename, period_start, period_end, transaction_count)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [req.user.userId, filename, statementPeriod.start, statementPeriod.end, successCount]
+        );
+      } catch (err) {
+        console.error('Failed to save statement record:', err);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      count: successCount,
+      added: successCount,
+      failed: failCount,
+      transactions: results.map(t => ({
+        id: t.id,
+        date: t.date,
+        amount: t.amount,
+        description: t.description,
+        bank: t.bank,
+        rawSMS: t.raw_sms,
+        taxCategory: t.tax_category,
+        incomeType: t.income_type
+      }))
+    });
+  } catch (error) {
+    console.error('Bulk add error:', error);
+    res.status(500).json({ error: 'Failed to add transactions' });
+  }
+});
+
 // Delete transaction
 app.delete('/api/transactions/:id', authenticateToken, async (req, res) => {
   try {
@@ -569,18 +644,26 @@ app.post('/api/extract-pdf', authenticateToken, async (req, res) => {
       max_tokens: 4000,
       messages: [{
         role: 'user',
-        content: `Analyze this bank statement text and extract ALL income/credit transactions.
+        content: `Analyze this bank statement text and extract ONLY income/credit transactions (money coming IN).
+
+IMPORTANT: Only include transactions where money is being RECEIVED/CREDITED to the account.
+EXCLUDE ALL of the following:
+- Withdrawals (ATM, POS, cash withdrawals)
+- Transfers OUT (money sent to other accounts)
+- Payments made (bills, purchases, charges)
+- Fees and charges
+- Debits of any kind
+- Any transaction with keywords like: "withdrawal", "debit", "payment", "charge", "fee", "transfer to", "sent", "paid"
 
 Return ONLY a valid JSON array. Each object must have:
 - date: string (YYYY-MM-DD format)
 - amount: number (numeric value only, no currency symbols or commas)
 - description: string (narration or description of the transaction)
 - bank: string (bank name if visible, otherwise empty string)
-- type: string (must be "credit")
+- type: string (must be "credit" for incoming money)
 
-Only include CREDIT/INCOME transactions (money received). Skip all debits, withdrawals, charges, and fees.
-If no income transactions found, return [].
-Return ONLY the JSON array, no explanation.
+If no income/credit transactions found, return [].
+Return ONLY the JSON array, no explanation or markdown.
 
 BANK STATEMENT TEXT:
 ${pdfText.substring(0, 15000)}`
@@ -601,8 +684,26 @@ ${pdfText.substring(0, 15000)}`
     let transactions = [];
     try {
       transactions = JSON.parse(jsonMatch[0]);
+
+      // Keywords that indicate outgoing transactions (debits/withdrawals)
+      const debitKeywords = [
+        'withdrawal', 'withdraw', 'debit', 'payment', 'charge', 'fee',
+        'transfer to', 'sent to', 'paid', 'purchase', 'atm', 'pos',
+        'bill payment', 'airtime', 'data', 'commission on', 'vat',
+        'stamp duty', 'sms charge', 'maintenance fee'
+      ];
+
       transactions = transactions
-        .filter(t => t.amount > 0 && t.type === 'credit')
+        .filter(t => {
+          // Must be positive amount and marked as credit
+          if (!(t.amount > 0 && t.type === 'credit')) return false;
+
+          // Filter out transactions with debit keywords in description
+          const desc = String(t.description || '').toLowerCase();
+          const hasDebitKeyword = debitKeywords.some(keyword => desc.includes(keyword));
+
+          return !hasDebitKeyword;
+        })
         .map(t => {
           const desc = String(t.description || '').substring(0, 200);
           const classification = classifyTransaction(desc);

@@ -187,6 +187,14 @@ class ApiService {
     });
     return response.data;
   }
+
+  // PDF text extraction
+  async extractTextFromPDF(pdfData) {
+    const response = await this.api.post('/extract-pdf', {
+      pdfData
+    });
+    return response.data;
+  }
 }
 
 export default new ApiService();

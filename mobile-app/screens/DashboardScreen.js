@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,9 +18,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseBankAlert } from '../services/bankAlertParser';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import {
   calculateTax,
   calculateNetIncome,
@@ -37,7 +39,8 @@ import {
 import { colors, spacing, typography, borderRadius } from '../theme';
 
 export default function DashboardScreen({ navigation }) {
-  const [user, setUser] = useState(null);
+  const { user: authUser, logout: authLogout, updateUser } = useAuth();
+  const [user, setUser] = useState(authUser);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,155 +50,113 @@ export default function DashboardScreen({ navigation }) {
   const [smsListenerActive, setSmsListenerActive] = useState(false);
   const [isNavigatingAway, setIsNavigatingAway] = useState(false);
 
-  const loadData = useCallback(async () => {
-    try {
-      console.log('[Dashboard] Starting loadData...');
-
-      // Check if we have a token first
-      const isAuth = await api.isAuthenticated();
-      console.log('[Dashboard] Is authenticated:', isAuth);
-
-      if (!isAuth) {
-        console.log('[Dashboard] No auth token found, redirecting to login');
-        setLoading(false); // Ensure loading is false before navigating
-        setIsNavigatingAway(true);
-        // Use setTimeout to ensure state update happens
-        setTimeout(() => {
-          console.log('[Dashboard] Navigating to Welcome...');
-          navigation.replace('Welcome');
-        }, 100);
-        return;
-      }
-
-      console.log('[Dashboard] Fetching user data...');
-      const userData = await api.getCurrentUser();
-
-      // If user data is null after having a token, something is wrong
-      if (!userData) {
-        console.log('[Dashboard] No user data returned but token exists');
-        // Clear auth and redirect
-        await api.logout();
-        setLoading(false); // Ensure loading is false before showing alert
-        setIsNavigatingAway(true);
-        Alert.alert(
-          'Session Error',
-          'Unable to load your account. Please login again.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                setTimeout(() => {
-                  console.log('[Dashboard] Navigating to Welcome after session error...');
-                  navigation.replace('Welcome');
-                }, 100);
-              }
-            }
-          ]
-        );
-        return;
-      }
-
-      console.log('[Dashboard] User data loaded successfully:', userData.email);
-      setUser(userData);
-
-      console.log('[Dashboard] Fetching transactions...');
-      const response = await api.getTransactions();
-      if (__DEV__) console.log('[Dashboard] API Response:', response);
-
-      // Handle response format: {success: true, transactions: [...]}
-      const transactionsData = response.transactions || response;
-      if (__DEV__) {
-        console.log('[Dashboard] Transactions data:', transactionsData);
-        console.log('[Dashboard] Number of transactions:', transactionsData?.length);
-      }
-
-      const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
-      setTransactions(transactionsArray);
-
-      console.log('[Dashboard] Data loaded successfully. Transactions:', transactionsArray.length);
-    } catch (error) {
-      console.error('[Dashboard] Error loading data:', error.message);
-      console.error('[Dashboard] Error details:', {
-        status: error.response?.status,
-        message: error.response?.data?.message || error.message,
-        isTimeout: error.code === 'ECONNABORTED',
-        isNetworkError: !error.response,
-      });
-
-      // If error is authentication-related (401/403), redirect to login
-      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-        console.log('[Dashboard] Authentication error, redirecting to login');
-        await api.logout();
-        setLoading(false); // Ensure loading is false before showing alert
-        setIsNavigatingAway(true);
-        Alert.alert(
-          'Session Expired',
-          'Your session has expired. Please login again.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                setTimeout(() => {
-                  console.log('[Dashboard] Navigating to Welcome after session expiry...');
-                  navigation.replace('Welcome');
-                }, 100);
-              }
-            }
-          ]
-        );
-        return;
-      }
-
-      // For other errors (network issues, server errors), show error but keep user logged in
-      console.warn('[Dashboard] Non-auth error, attempting to load cached data...');
-
-      // Try to load cached user data at least
-      try {
-        const cachedUserStr = await AsyncStorage.getItem('userData');
-        if (cachedUserStr) {
-          const cachedUser = JSON.parse(cachedUserStr);
-          console.log('[Dashboard] Loaded cached user data:', cachedUser.email);
-          setUser(cachedUser);
-        } else {
-          console.log('[Dashboard] No cached user data available');
-          // Show error message to user
-          Alert.alert(
-            'Connection Error',
-            'Unable to load your data. Please check your internet connection and try again.',
-            [
-              {
-                text: 'Retry',
-                onPress: () => {
-                  setLoading(true);
-                  loadData();
-                }
-              },
-              {
-                text: 'Logout',
-                style: 'destructive',
-                onPress: async () => {
-                  await api.logout();
-                  navigation.replace('Welcome');
-                }
-              }
-            ]
-          );
-        }
-      } catch (cacheError) {
-        console.error('[Dashboard] Failed to load cached user data:', cacheError);
-      }
-
-      // Set empty transactions on error
-      setTransactions([]);
-    } finally {
-      console.log('[Dashboard] Setting loading to false');
-      setLoading(false);
+  // Sync local user state with auth context
+  useEffect(() => {
+    if (authUser) {
+      setUser(authUser);
     }
-  }, [navigation]);
+  }, [authUser]);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const loadData = async () => {
+      try {
+        console.log('[Dashboard] Starting loadData...');
+
+        // Fetch fresh user data
+        console.log('[Dashboard] Fetching user data...');
+        const userData = await api.getCurrentUser();
+
+        if (!userData) {
+          console.log('[Dashboard] No user data returned');
+          throw new Error('Unable to load user data');
+        }
+
+        console.log('[Dashboard] User data loaded successfully:', userData.email);
+        if (isMounted) {
+          setUser(userData);
+          updateUser(userData); // Update auth context
+        }
+
+        // Fetch transactions
+        console.log('[Dashboard] Fetching transactions...');
+        const response = await api.getTransactions();
+        if (__DEV__) console.log('[Dashboard] API Response:', response);
+
+        const transactionsData = response.transactions || response;
+        if (__DEV__) {
+          console.log('[Dashboard] Transactions data:', transactionsData);
+          console.log('[Dashboard] Number of transactions:', transactionsData?.length);
+        }
+
+        const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+        if (isMounted) {
+          setTransactions(transactionsArray);
+        }
+
+        console.log('[Dashboard] Data loaded successfully. Transactions:', transactionsArray.length);
+      } catch (error) {
+        console.error('[Dashboard] Error loading data:', error.message);
+        console.error('[Dashboard] Error details:', {
+          status: error.response?.status,
+          message: error.response?.data?.message || error.message,
+          isTimeout: error.code === 'ECONNABORTED',
+          isNetworkError: !error.response,
+        });
+
+        // If authentication error, logout via context (which will trigger navigation)
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          console.log('[Dashboard] Authentication error, logging out');
+          Alert.alert(
+            'Session Expired',
+            'Your session has expired. Please login again.',
+            [{ text: 'OK', onPress: () => authLogout() }]
+          );
+          return;
+        }
+
+        // For other errors, try to use cached data
+        console.warn('[Dashboard] Non-auth error, attempting to load cached data...');
+        try {
+          const cachedUserStr = await AsyncStorage.getItem('userData');
+          if (cachedUserStr && isMounted) {
+            const cachedUser = JSON.parse(cachedUserStr);
+            console.log('[Dashboard] Loaded cached user data:', cachedUser.email);
+            setUser(cachedUser);
+          }
+        } catch (cacheError) {
+          console.error('[Dashboard] Failed to load cached user data:', cacheError);
+        }
+
+        // Set empty transactions on error
+        if (isMounted) {
+          setTransactions([]);
+        }
+
+        // Show error alert
+        Alert.alert(
+          'Connection Error',
+          'Unable to load your data. Please check your internet connection and try again.',
+          [
+            { text: 'Retry', onPress: () => loadData() },
+            { text: 'Logout', style: 'destructive', onPress: () => authLogout() }
+          ]
+        );
+      } finally {
+        console.log('[Dashboard] Setting loading to false');
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
     loadData();
-  }, [loadData]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Initialize SMS listener
   useEffect(() => {
@@ -244,7 +205,10 @@ export default function DashboardScreen({ navigation }) {
       await createTransactionFromSMS(transactionData);
 
       // Reload transactions to show the new one
-      await loadData();
+      const response = await api.getTransactions();
+      const transactionsData = response.transactions || response;
+      const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+      setTransactions(transactionsArray);
 
       // Show success alert
       Alert.alert(
@@ -263,8 +227,38 @@ export default function DashboardScreen({ navigation }) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+    try {
+      console.log('[Dashboard] Refreshing data...');
+
+      const userData = await api.getCurrentUser();
+      if (userData) {
+        setUser(userData);
+        updateUser(userData); // Update auth context
+      }
+
+      const response = await api.getTransactions();
+      const transactionsData = response.transactions || response;
+      const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+      setTransactions(transactionsArray);
+
+      console.log('[Dashboard] Refresh complete');
+    } catch (error) {
+      console.error('[Dashboard] Error during refresh:', error.message);
+
+      // If auth error, logout via context
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please login again.',
+          [{ text: 'OK', onPress: () => authLogout() }]
+        );
+      } else {
+        // For other errors, just show a brief alert
+        Alert.alert('Error', 'Failed to refresh data. Please try again.');
+      }
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleLogout = () => {
@@ -275,8 +269,8 @@ export default function DashboardScreen({ navigation }) {
         style: 'destructive',
         onPress: async () => {
           setIsNavigatingAway(true);
-          await api.logout();
-          setTimeout(() => navigation.replace('Welcome'), 0);
+          await authLogout();
+          // Navigation will happen automatically via AuthContext
         },
       },
     ]);
@@ -292,6 +286,7 @@ export default function DashboardScreen({ navigation }) {
       await api.updateBankAlertName(tempName);
       const updatedUser = await api.getCurrentUser();
       setUser(updatedUser);
+      updateUser(updatedUser); // Update auth context
       setShowNameInput(false);
       Alert.alert('Success', 'Bank alert name saved successfully!');
     } catch (error) {
@@ -439,7 +434,10 @@ export default function DashboardScreen({ navigation }) {
 
                 // Reload transactions
                 if (__DEV__) console.log('Reloading transactions...');
-                await loadData();
+                const response = await api.getTransactions();
+                const transactionsData = response.transactions || response;
+                const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+                setTransactions(transactionsArray);
                 if (__DEV__) console.log('Transactions reloaded');
 
                 Alert.alert(
@@ -460,6 +458,133 @@ export default function DashboardScreen({ navigation }) {
     } catch (error) {
       console.error('Image upload error:', error);
       Alert.alert('Error', 'Failed to process image: ' + error.message);
+      setLoading(false);
+    }
+  };
+
+  const handleUploadPDF = async () => {
+    try {
+      // Pick PDF document
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const document = result.assets[0];
+
+      if (!document.uri) {
+        Alert.alert('Error', 'Could not access the selected file.');
+        return;
+      }
+
+      setLoading(true);
+
+      // Read the PDF file as base64
+      const base64Data = await FileSystem.readAsStringAsync(document.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Extract transactions from PDF
+      const response = await api.extractTextFromPDF(base64Data);
+
+      if (!response.success || !response.transactions || response.transactions.length === 0) {
+        Alert.alert(
+          'No Income Found',
+          'Could not find any income transactions in this bank statement. Please make sure it\'s a valid bank statement PDF with credit/income transactions.'
+        );
+        setLoading(false);
+        return;
+      }
+
+      const extractedTransactions = response.transactions;
+      const newTransactionsCount = extractedTransactions.filter(t => !t.isDuplicate).length;
+      const duplicatesCount = extractedTransactions.filter(t => t.isDuplicate).length;
+
+      // Show summary and ask for confirmation
+      let message = `Found ${extractedTransactions.length} income transaction${extractedTransactions.length !== 1 ? 's' : ''} in the PDF.`;
+      if (duplicatesCount > 0) {
+        message += `\n\n${duplicatesCount} duplicate${duplicatesCount !== 1 ? 's' : ''} detected (already in your records).`;
+      }
+      if (newTransactionsCount > 0) {
+        message += `\n\n${newTransactionsCount} new transaction${newTransactionsCount !== 1 ? 's' : ''} will be added.`;
+      }
+      message += '\n\nProceed with adding the new transactions?';
+
+      Alert.alert(
+        'PDF Processed Successfully',
+        message,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => setLoading(false),
+          },
+          {
+            text: 'Add New Transactions',
+            onPress: async () => {
+              try {
+                // Filter out duplicates and add only new transactions
+                const newTransactions = extractedTransactions.filter(t => !t.isDuplicate);
+
+                if (newTransactions.length === 0) {
+                  Alert.alert('All Duplicates', 'All transactions from this PDF are already in your records.');
+                  setLoading(false);
+                  return;
+                }
+
+                // Add all new transactions
+                let successCount = 0;
+                let failCount = 0;
+
+                for (const transaction of newTransactions) {
+                  try {
+                    await api.createTransaction(transaction);
+                    successCount++;
+                  } catch (err) {
+                    console.error('Failed to create transaction:', err);
+                    failCount++;
+                  }
+                }
+
+                // Reload transactions
+                const transactionsResponse = await api.getTransactions();
+                const transactionsData = transactionsResponse.transactions || transactionsResponse;
+                const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+                setTransactions(transactionsArray);
+
+                // Show result
+                let resultMessage = `Successfully added ${successCount} transaction${successCount !== 1 ? 's' : ''}!`;
+                if (failCount > 0) {
+                  resultMessage += `\n\n${failCount} transaction${failCount !== 1 ? 's' : ''} failed to add.`;
+                }
+
+                Alert.alert('Import Complete', resultMessage);
+              } catch (error) {
+                console.error('Batch create error:', error);
+                Alert.alert('Error', 'Failed to add transactions: ' + error.message);
+              } finally {
+                setLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('PDF upload error:', error);
+
+      let errorMessage = 'Failed to process PDF.';
+      if (error.message) {
+        errorMessage += '\n\n' + error.message;
+      }
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
+      Alert.alert('Error', errorMessage);
       setLoading(false);
     }
   };
@@ -507,9 +632,12 @@ export default function DashboardScreen({ navigation }) {
         </Text>
         <TouchableOpacity
           style={styles.retryButton}
-          onPress={async () => {
+          onPress={() => {
             setLoading(true);
-            await loadData();
+            // Force re-mount by navigating away and back
+            setTimeout(() => {
+              navigation.replace('Dashboard');
+            }, 100);
           }}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
@@ -625,6 +753,14 @@ export default function DashboardScreen({ navigation }) {
           >
             <Text style={styles.actionButtonIcon}>📸</Text>
             <Text style={styles.actionButtonText}>Upload Bank Alert</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleUploadPDF}
+          >
+            <Text style={styles.actionButtonIcon}>📄</Text>
+            <Text style={styles.actionButtonText}>Upload PDF Statement</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -956,12 +1092,14 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: spacing.md,
     marginBottom: spacing.md,
     gap: spacing.sm,
   },
   actionButton: {
     flex: 1,
+    minWidth: '30%',
     backgroundColor: colors.cardBackground,
     padding: spacing.lg,
     borderRadius: borderRadius.md,
