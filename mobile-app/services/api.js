@@ -7,6 +7,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_URL,
+      timeout: 15000, // 15 second timeout to prevent hanging requests
       headers: {
         'Content-Type': 'application/json',
       },
@@ -42,11 +43,29 @@ class ApiService {
 
   // Auth endpoints
   async login(email, password) {
+    console.log('[API] Attempting login for:', email);
     const response = await this.api.post('/auth/login', { email, password });
-    if (response.data.token) {
+
+    if (response.data.token && response.data.user) {
+      console.log('[API] Login successful, saving token and user data...');
+
+      // Save token and user data
       await AsyncStorage.setItem('userToken', response.data.token);
       await AsyncStorage.setItem('userData', JSON.stringify(response.data.user));
+
+      // Verify data was saved correctly
+      const savedToken = await AsyncStorage.getItem('userToken');
+      const savedUser = await AsyncStorage.getItem('userData');
+
+      if (!savedToken || !savedUser) {
+        throw new Error('Failed to save authentication data to storage');
+      }
+
+      console.log('[API] Authentication data saved and verified successfully');
+    } else {
+      throw new Error('Invalid response from server - missing token or user data');
     }
+
     return response.data;
   }
 
@@ -73,15 +92,51 @@ class ApiService {
     await AsyncStorage.removeItem('userData');
   }
 
-  async getCurrentUser() {
+  async getCurrentUser(options = { validateToken: false }) {
     try {
-      const userData = await AsyncStorage.getItem('userData');
-      return userData ? JSON.parse(userData) : null;
+      console.log('[API] Fetching current user from server...');
+      // Fetch fresh user data from the server to validate token
+      const response = await this.api.get('/auth/me');
+      const user = response.data;
+
+      console.log('[API] User data fetched successfully:', user?.email || 'unknown');
+
+      // Update cached user data
+      await AsyncStorage.setItem('userData', JSON.stringify(user));
+
+      return user;
     } catch (error) {
-      console.error('Failed to parse user data:', error);
-      // Clear corrupted data
-      await AsyncStorage.removeItem('userData');
-      return null;
+      console.error('[API] Failed to fetch user data:', error.message);
+      console.error('[API] Error details:', {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        isTimeout: error.code === 'ECONNABORTED',
+        isNetworkError: !error.response
+      });
+
+      // If we're validating the token, don't fall back to cache - throw the error
+      if (options.validateToken) {
+        throw error;
+      }
+
+      // If server request fails, try reading from cache as fallback
+      // This handles offline scenarios
+      console.log('[API] Falling back to cached user data...');
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          console.log('[API] Found cached user data');
+          const parsedUser = JSON.parse(userData);
+          return parsedUser;
+        } else {
+          console.log('[API] No cached user data found');
+          return null;
+        }
+      } catch (cacheError) {
+        console.error('[API] Failed to parse cached user data:', cacheError);
+        await AsyncStorage.removeItem('userData');
+        return null;
+      }
     }
   }
 

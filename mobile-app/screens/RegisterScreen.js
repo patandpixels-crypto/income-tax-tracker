@@ -60,7 +60,12 @@ export default function RegisterScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await api.register(name, email, password);
+      const result = await api.register(name, email, password);
+      console.log('Registration successful:', !!result);
+
+      // Small delay to ensure state is properly saved
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       Alert.alert('Success', 'Account created successfully!', [
         {
           text: 'OK',
@@ -68,6 +73,7 @@ export default function RegisterScreen({ navigation }) {
         },
       ]);
     } catch (error) {
+      console.error('Registration failed:', error);
       Alert.alert(
         'Registration Failed',
         error?.response?.data?.message || error.message || 'Could not create account'

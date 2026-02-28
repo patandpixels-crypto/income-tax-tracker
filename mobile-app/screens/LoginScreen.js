@@ -49,16 +49,34 @@ export default function LoginScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await api.login(email, password);
+      console.log('[LoginScreen] Attempting login...');
+      const result = await api.login(email, password);
+      console.log('[LoginScreen] Login successful:', !!result);
+
+      // Verify authentication state before navigating
+      const isAuth = await api.isAuthenticated();
+      if (!isAuth) {
+        throw new Error('Authentication verification failed - token not saved properly');
+      }
+
+      console.log('[LoginScreen] Authentication verified, navigating to Dashboard...');
+
+      // Small delay to ensure all state is properly saved and navigation is ready
+      await new Promise(resolve => setTimeout(resolve, 200));
+
       navigation.replace('Dashboard');
     } catch (error) {
+      console.error('[LoginScreen] Login failed:', error.message);
+      console.error('[LoginScreen] Error details:', error.response?.data);
+
+      setLoading(false); // Stop loading on error
+
       Alert.alert(
         'Login Failed',
         error?.response?.data?.message || error.message || 'Invalid email or password'
       );
-    } finally {
-      setLoading(false);
     }
+    // Note: Don't setLoading(false) on success - let Dashboard handle loading state
   };
 
   const handleForgotPassword = () => {

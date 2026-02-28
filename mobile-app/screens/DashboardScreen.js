@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseBankAlert } from '../services/bankAlertParser';
 import api from '../services/api';
 import {
@@ -44,33 +45,153 @@ export default function DashboardScreen({ navigation }) {
   const [tempName, setTempName] = useState('');
   const [smsPermissionGranted, setSmsPermissionGranted] = useState(false);
   const [smsListenerActive, setSmsListenerActive] = useState(false);
+  const [isNavigatingAway, setIsNavigatingAway] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
+      console.log('[Dashboard] Starting loadData...');
+
+      // Check if we have a token first
+      const isAuth = await api.isAuthenticated();
+      console.log('[Dashboard] Is authenticated:', isAuth);
+
+      if (!isAuth) {
+        console.log('[Dashboard] No auth token found, redirecting to login');
+        setLoading(false); // Ensure loading is false before navigating
+        setIsNavigatingAway(true);
+        // Use setTimeout to ensure state update happens
+        setTimeout(() => {
+          console.log('[Dashboard] Navigating to Welcome...');
+          navigation.replace('Welcome');
+        }, 100);
+        return;
+      }
+
+      console.log('[Dashboard] Fetching user data...');
       const userData = await api.getCurrentUser();
+
+      // If user data is null after having a token, something is wrong
+      if (!userData) {
+        console.log('[Dashboard] No user data returned but token exists');
+        // Clear auth and redirect
+        await api.logout();
+        setLoading(false); // Ensure loading is false before showing alert
+        setIsNavigatingAway(true);
+        Alert.alert(
+          'Session Error',
+          'Unable to load your account. Please login again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setTimeout(() => {
+                  console.log('[Dashboard] Navigating to Welcome after session error...');
+                  navigation.replace('Welcome');
+                }, 100);
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      console.log('[Dashboard] User data loaded successfully:', userData.email);
       setUser(userData);
 
+      console.log('[Dashboard] Fetching transactions...');
       const response = await api.getTransactions();
-      if (__DEV__) console.log('API Response:', response);
+      if (__DEV__) console.log('[Dashboard] API Response:', response);
 
       // Handle response format: {success: true, transactions: [...]}
       const transactionsData = response.transactions || response;
       if (__DEV__) {
-        console.log('Transactions data:', transactionsData);
-        console.log('Number of transactions:', transactionsData?.length);
+        console.log('[Dashboard] Transactions data:', transactionsData);
+        console.log('[Dashboard] Number of transactions:', transactionsData?.length);
       }
 
       const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
       setTransactions(transactionsArray);
 
-      if (__DEV__) console.log('Transactions set to state:', transactionsArray.length);
+      console.log('[Dashboard] Data loaded successfully. Transactions:', transactionsArray.length);
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('[Dashboard] Error loading data:', error.message);
+      console.error('[Dashboard] Error details:', {
+        status: error.response?.status,
+        message: error.response?.data?.message || error.message,
+        isTimeout: error.code === 'ECONNABORTED',
+        isNetworkError: !error.response,
+      });
+
+      // If error is authentication-related (401/403), redirect to login
+      if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+        console.log('[Dashboard] Authentication error, redirecting to login');
+        await api.logout();
+        setLoading(false); // Ensure loading is false before showing alert
+        setIsNavigatingAway(true);
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please login again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setTimeout(() => {
+                  console.log('[Dashboard] Navigating to Welcome after session expiry...');
+                  navigation.replace('Welcome');
+                }, 100);
+              }
+            }
+          ]
+        );
+        return;
+      }
+
+      // For other errors (network issues, server errors), show error but keep user logged in
+      console.warn('[Dashboard] Non-auth error, attempting to load cached data...');
+
+      // Try to load cached user data at least
+      try {
+        const cachedUserStr = await AsyncStorage.getItem('userData');
+        if (cachedUserStr) {
+          const cachedUser = JSON.parse(cachedUserStr);
+          console.log('[Dashboard] Loaded cached user data:', cachedUser.email);
+          setUser(cachedUser);
+        } else {
+          console.log('[Dashboard] No cached user data available');
+          // Show error message to user
+          Alert.alert(
+            'Connection Error',
+            'Unable to load your data. Please check your internet connection and try again.',
+            [
+              {
+                text: 'Retry',
+                onPress: () => {
+                  setLoading(true);
+                  loadData();
+                }
+              },
+              {
+                text: 'Logout',
+                style: 'destructive',
+                onPress: async () => {
+                  await api.logout();
+                  navigation.replace('Welcome');
+                }
+              }
+            ]
+          );
+        }
+      } catch (cacheError) {
+        console.error('[Dashboard] Failed to load cached user data:', cacheError);
+      }
+
+      // Set empty transactions on error
       setTransactions([]);
     } finally {
+      console.log('[Dashboard] Setting loading to false');
       setLoading(false);
     }
-  }, []);
+  }, [navigation]);
 
   useEffect(() => {
     loadData();
@@ -153,8 +274,9 @@ export default function DashboardScreen({ navigation }) {
         text: 'Logout',
         style: 'destructive',
         onPress: async () => {
+          setIsNavigatingAway(true);
           await api.logout();
-          navigation.replace('Welcome');
+          setTimeout(() => navigation.replace('Welcome'), 0);
         },
       },
     ]);
@@ -358,13 +480,46 @@ export default function DashboardScreen({ navigation }) {
   const netIncome = totalIncome - taxAmount;
   const taxRate = getEffectiveRate(taxableIncome);
 
-  if (loading) {
+  if (loading || isNavigatingAway) {
     return (
       <LinearGradient
         colors={[colors.background, colors.backgroundSecondary]}
         style={styles.loadingContainer}
       >
         <ActivityIndicator size="large" color={colors.primary} />
+        {isNavigatingAway && (
+          <Text style={styles.loadingText}>Redirecting to login...</Text>
+        )}
+      </LinearGradient>
+    );
+  }
+
+  // If loading is done but we still don't have user data, show error state
+  if (!loading && !user) {
+    return (
+      <LinearGradient
+        colors={[colors.background, colors.backgroundSecondary]}
+        style={styles.loadingContainer}
+      >
+        <Text style={styles.errorTitle}>Unable to Load Profile</Text>
+        <Text style={styles.errorText}>
+          Could not load your account information. Please check your internet connection.
+        </Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={async () => {
+            setLoading(true);
+            await loadData();
+          }}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.logoutLinkButton}
+          onPress={handleLogout}
+        >
+          <Text style={styles.logoutLinkText}>Logout</Text>
+        </TouchableOpacity>
       </LinearGradient>
     );
   }
@@ -647,6 +802,46 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: spacing.xl,
+    lineHeight: 22,
+    marginBottom: spacing.xl,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+  },
+  retryButtonText: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  logoutLinkButton: {
+    paddingVertical: spacing.sm,
+  },
+  logoutLinkText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    textDecoration: 'underline',
   },
   scrollView: {
     flex: 1,
