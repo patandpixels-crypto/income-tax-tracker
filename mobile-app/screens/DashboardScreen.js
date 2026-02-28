@@ -49,23 +49,33 @@ export default function DashboardScreen({ navigation }) {
 
   const loadData = useCallback(async () => {
     try {
+      console.log('[Dashboard] Starting loadData...');
+
       // Check if we have a token first
       const isAuth = await api.isAuthenticated();
+      console.log('[Dashboard] Is authenticated:', isAuth);
+
       if (!isAuth) {
-        console.log('No auth token found, redirecting to login');
+        console.log('[Dashboard] No auth token found, redirecting to login');
+        setLoading(false); // Ensure loading is false before navigating
         setIsNavigatingAway(true);
         // Use setTimeout to ensure state update happens
-        setTimeout(() => navigation.replace('Welcome'), 0);
+        setTimeout(() => {
+          console.log('[Dashboard] Navigating to Welcome...');
+          navigation.replace('Welcome');
+        }, 100);
         return;
       }
 
+      console.log('[Dashboard] Fetching user data...');
       const userData = await api.getCurrentUser();
 
       // If user data is null after having a token, something is wrong
       if (!userData) {
-        console.log('No user data returned but token exists');
+        console.log('[Dashboard] No user data returned but token exists');
         // Clear auth and redirect
         await api.logout();
+        setLoading(false); // Ensure loading is false before showing alert
         setIsNavigatingAway(true);
         Alert.alert(
           'Session Error',
@@ -74,7 +84,10 @@ export default function DashboardScreen({ navigation }) {
             {
               text: 'OK',
               onPress: () => {
-                setTimeout(() => navigation.replace('Welcome'), 0);
+                setTimeout(() => {
+                  console.log('[Dashboard] Navigating to Welcome after session error...');
+                  navigation.replace('Welcome');
+                }, 100);
               }
             }
           ]
@@ -82,29 +95,38 @@ export default function DashboardScreen({ navigation }) {
         return;
       }
 
+      console.log('[Dashboard] User data loaded successfully:', userData.email);
       setUser(userData);
 
+      console.log('[Dashboard] Fetching transactions...');
       const response = await api.getTransactions();
-      if (__DEV__) console.log('API Response:', response);
+      if (__DEV__) console.log('[Dashboard] API Response:', response);
 
       // Handle response format: {success: true, transactions: [...]}
       const transactionsData = response.transactions || response;
       if (__DEV__) {
-        console.log('Transactions data:', transactionsData);
-        console.log('Number of transactions:', transactionsData?.length);
+        console.log('[Dashboard] Transactions data:', transactionsData);
+        console.log('[Dashboard] Number of transactions:', transactionsData?.length);
       }
 
       const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
       setTransactions(transactionsArray);
 
-      if (__DEV__) console.log('Transactions set to state:', transactionsArray.length);
+      console.log('[Dashboard] Data loaded successfully. Transactions:', transactionsArray.length);
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('[Dashboard] Error loading data:', error.message);
+      console.error('[Dashboard] Error details:', {
+        status: error.response?.status,
+        message: error.response?.data?.message || error.message,
+        isTimeout: error.code === 'ECONNABORTED',
+        isNetworkError: !error.response,
+      });
 
       // If error is authentication-related (401/403), redirect to login
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-        console.log('Authentication error, redirecting to login');
+        console.log('[Dashboard] Authentication error, redirecting to login');
         await api.logout();
+        setLoading(false); // Ensure loading is false before showing alert
         setIsNavigatingAway(true);
         Alert.alert(
           'Session Expired',
@@ -113,7 +135,10 @@ export default function DashboardScreen({ navigation }) {
             {
               text: 'OK',
               onPress: () => {
-                setTimeout(() => navigation.replace('Welcome'), 0);
+                setTimeout(() => {
+                  console.log('[Dashboard] Navigating to Welcome after session expiry...');
+                  navigation.replace('Welcome');
+                }, 100);
               }
             }
           ]
@@ -122,21 +147,48 @@ export default function DashboardScreen({ navigation }) {
       }
 
       // For other errors (network issues, server errors), show error but keep user logged in
-      console.warn('Non-auth error loading data:', error.message);
+      console.warn('[Dashboard] Non-auth error, attempting to load cached data...');
 
       // Try to load cached user data at least
       try {
         const cachedUserStr = await AsyncStorage.getItem('userData');
         if (cachedUserStr) {
-          setUser(JSON.parse(cachedUserStr));
+          const cachedUser = JSON.parse(cachedUserStr);
+          console.log('[Dashboard] Loaded cached user data:', cachedUser.email);
+          setUser(cachedUser);
+        } else {
+          console.log('[Dashboard] No cached user data available');
+          // Show error message to user
+          Alert.alert(
+            'Connection Error',
+            'Unable to load your data. Please check your internet connection and try again.',
+            [
+              {
+                text: 'Retry',
+                onPress: () => {
+                  setLoading(true);
+                  loadData();
+                }
+              },
+              {
+                text: 'Logout',
+                style: 'destructive',
+                onPress: async () => {
+                  await api.logout();
+                  navigation.replace('Welcome');
+                }
+              }
+            ]
+          );
         }
       } catch (cacheError) {
-        console.error('Failed to load cached user data:', cacheError);
+        console.error('[Dashboard] Failed to load cached user data:', cacheError);
       }
 
       // Set empty transactions on error
       setTransactions([]);
     } finally {
+      console.log('[Dashboard] Setting loading to false');
       setLoading(false);
     }
   }, [navigation]);
