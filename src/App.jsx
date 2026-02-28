@@ -555,6 +555,8 @@ export default function SMSIncomeTracker() {
                   <label className="block text-sm font-semibold text-gray-300 mb-2">Email Address</label>
                   <input
                     type="email"
+                    id="login-email"
+                    name="email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     placeholder="your@email.com"
@@ -567,6 +569,8 @@ export default function SMSIncomeTracker() {
                   <label className="block text-sm font-semibold text-gray-300 mb-2">Password</label>
                   <input
                     type="password"
+                    id="login-password"
+                    name="password"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     placeholder="••••••••"
@@ -585,6 +589,8 @@ export default function SMSIncomeTracker() {
                   <label className="block text-sm font-semibold text-gray-300 mb-2">Full Name</label>
                   <input
                     type="text"
+                    id="register-name"
+                    name="name"
                     value={registerName}
                     onChange={(e) => setRegisterName(e.target.value)}
                     placeholder="John Doe"
@@ -597,6 +603,8 @@ export default function SMSIncomeTracker() {
                   <label className="block text-sm font-semibold text-gray-300 mb-2">Email Address</label>
                   <input
                     type="email"
+                    id="register-email"
+                    name="email"
                     value={registerEmail}
                     onChange={(e) => setRegisterEmail(e.target.value)}
                     placeholder="your@email.com"
@@ -609,6 +617,8 @@ export default function SMSIncomeTracker() {
                   <label className="block text-sm font-semibold text-gray-300 mb-2">Password</label>
                   <input
                     type="password"
+                    id="register-password"
+                    name="password"
                     value={registerPassword}
                     onChange={(e) => setRegisterPassword(e.target.value)}
                     placeholder="••••••••"
@@ -622,6 +632,8 @@ export default function SMSIncomeTracker() {
                   <label className="block text-sm font-semibold text-gray-300 mb-2">Confirm Password</label>
                   <input
                     type="password"
+                    id="register-confirm-password"
+                    name="confirm-password"
                     value={registerConfirmPassword}
                     onChange={(e) => setRegisterConfirmPassword(e.target.value)}
                     placeholder="••••••••"
@@ -853,6 +865,8 @@ export default function SMSIncomeTracker() {
                 >
                   <input
                     type="checkbox"
+                    id={`pdf-txn-${i}`}
+                    name={`pdf-txn-${i}`}
                     checked={!!selectedPdfTxns[i]}
                     onChange={(e) => setSelectedPdfTxns({ ...selectedPdfTxns, [i]: e.target.checked })}
                     className="w-5 h-5 accent-purple-500 mt-0.5"
@@ -914,6 +928,8 @@ export default function SMSIncomeTracker() {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
+                  id="user-name"
+                  name="name"
                   value={tempName}
                   onChange={(e) => setTempName(e.target.value)}
                   placeholder="Your name"
@@ -1026,6 +1042,8 @@ export default function SMSIncomeTracker() {
               Add Transaction
             </h2>
             <textarea
+              id="sms-text"
+              name="smsText"
               value={smsText}
               onChange={(e) => setSmsText(e.target.value)}
               placeholder="Paste bank alert SMS here..."
@@ -1055,6 +1073,8 @@ export default function SMSIncomeTracker() {
                 </div>
                 <input
                   type="file"
+                  id="image-upload"
+                  name="imageUpload"
                   accept="image/*"
                   onChange={handleImageUpload}
                   disabled={isProcessingImage}
@@ -1074,6 +1094,8 @@ export default function SMSIncomeTracker() {
                 </div>
                 <input
                   type="file"
+                  id="pdf-upload"
+                  name="pdfUpload"
                   accept="application/pdf"
                   onChange={handlePdfUpload}
                   disabled={isPdfProcessing}
