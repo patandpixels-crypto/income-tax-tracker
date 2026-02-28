@@ -309,15 +309,26 @@ export default function SMSIncomeTracker() {
     setSelectedPdfTxns({});
     setPdfFilename(file.name);
 
-    const formData = new FormData();
-    formData.append("pdf", file);
-    if (userName) formData.append("userName", userName);
-
     try {
-      const response = await fetch(`${API_URL}/transactions/upload-pdf`, {
+      // Convert PDF file to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise((resolve, reject) => {
+        reader.onload = () => {
+          const base64String = reader.result.split(',')[1]; // Remove data:application/pdf;base64, prefix
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+      });
+      reader.readAsDataURL(file);
+      const pdfData = await base64Promise;
+
+      const response = await fetch(`${API_URL}/extract-pdf`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${authToken}` },
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ pdfData }),
       });
 
       const data = await response.json();
