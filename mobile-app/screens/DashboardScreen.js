@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseBankAlert } from '../services/bankAlertParser';
 import api from '../services/api';
@@ -461,6 +462,133 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
+  const handleUploadPDF = async () => {
+    try {
+      // Pick PDF document
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const document = result.assets[0];
+
+      if (!document.uri) {
+        Alert.alert('Error', 'Could not access the selected file.');
+        return;
+      }
+
+      setLoading(true);
+
+      // Read the PDF file as base64
+      const base64Data = await FileSystem.readAsStringAsync(document.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Extract transactions from PDF
+      const response = await api.extractTextFromPDF(base64Data);
+
+      if (!response.success || !response.transactions || response.transactions.length === 0) {
+        Alert.alert(
+          'No Income Found',
+          'Could not find any income transactions in this bank statement. Please make sure it\'s a valid bank statement PDF with credit/income transactions.'
+        );
+        setLoading(false);
+        return;
+      }
+
+      const extractedTransactions = response.transactions;
+      const newTransactionsCount = extractedTransactions.filter(t => !t.isDuplicate).length;
+      const duplicatesCount = extractedTransactions.filter(t => t.isDuplicate).length;
+
+      // Show summary and ask for confirmation
+      let message = `Found ${extractedTransactions.length} income transaction${extractedTransactions.length !== 1 ? 's' : ''} in the PDF.`;
+      if (duplicatesCount > 0) {
+        message += `\n\n${duplicatesCount} duplicate${duplicatesCount !== 1 ? 's' : ''} detected (already in your records).`;
+      }
+      if (newTransactionsCount > 0) {
+        message += `\n\n${newTransactionsCount} new transaction${newTransactionsCount !== 1 ? 's' : ''} will be added.`;
+      }
+      message += '\n\nProceed with adding the new transactions?';
+
+      Alert.alert(
+        'PDF Processed Successfully',
+        message,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => setLoading(false),
+          },
+          {
+            text: 'Add New Transactions',
+            onPress: async () => {
+              try {
+                // Filter out duplicates and add only new transactions
+                const newTransactions = extractedTransactions.filter(t => !t.isDuplicate);
+
+                if (newTransactions.length === 0) {
+                  Alert.alert('All Duplicates', 'All transactions from this PDF are already in your records.');
+                  setLoading(false);
+                  return;
+                }
+
+                // Add all new transactions
+                let successCount = 0;
+                let failCount = 0;
+
+                for (const transaction of newTransactions) {
+                  try {
+                    await api.createTransaction(transaction);
+                    successCount++;
+                  } catch (err) {
+                    console.error('Failed to create transaction:', err);
+                    failCount++;
+                  }
+                }
+
+                // Reload transactions
+                const transactionsResponse = await api.getTransactions();
+                const transactionsData = transactionsResponse.transactions || transactionsResponse;
+                const transactionsArray = Array.isArray(transactionsData) ? transactionsData : [];
+                setTransactions(transactionsArray);
+
+                // Show result
+                let resultMessage = `Successfully added ${successCount} transaction${successCount !== 1 ? 's' : ''}!`;
+                if (failCount > 0) {
+                  resultMessage += `\n\n${failCount} transaction${failCount !== 1 ? 's' : ''} failed to add.`;
+                }
+
+                Alert.alert('Import Complete', resultMessage);
+              } catch (error) {
+                console.error('Batch create error:', error);
+                Alert.alert('Error', 'Failed to add transactions: ' + error.message);
+              } finally {
+                setLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('PDF upload error:', error);
+
+      let errorMessage = 'Failed to process PDF.';
+      if (error.message) {
+        errorMessage += '\n\n' + error.message;
+      }
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+
+      Alert.alert('Error', errorMessage);
+      setLoading(false);
+    }
+  };
+
   // Calculate totals with tax classification
   const totalIncome = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
   const taxableIncome = transactions
@@ -625,6 +753,14 @@ export default function DashboardScreen({ navigation }) {
           >
             <Text style={styles.actionButtonIcon}>📸</Text>
             <Text style={styles.actionButtonText}>Upload Bank Alert</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleUploadPDF}
+          >
+            <Text style={styles.actionButtonIcon}>📄</Text>
+            <Text style={styles.actionButtonText}>Upload PDF Statement</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -956,12 +1092,14 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: spacing.md,
     marginBottom: spacing.md,
     gap: spacing.sm,
   },
   actionButton: {
     flex: 1,
+    minWidth: '30%',
     backgroundColor: colors.cardBackground,
     padding: spacing.lg,
     borderRadius: borderRadius.md,
