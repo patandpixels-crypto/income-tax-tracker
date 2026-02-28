@@ -182,7 +182,7 @@ export default function SMSIncomeTracker() {
       });
       if (response.ok) {
         const data = await response.json();
-        setTransactions(data);
+        setTransactions(data.transactions || []);
       }
     } catch (err) {
       console.error("Failed to load transactions:", err);
@@ -457,14 +457,17 @@ export default function SMSIncomeTracker() {
   }
 
   function calculateStats() {
-    const taxable = transactions.filter((t) => t.tax_status === "taxable");
-    const nonTaxable = transactions.filter((t) => t.tax_status === "non_taxable");
-    const unclassified = transactions.filter((t) => !t.tax_status || t.tax_status === "unclassified");
+    // Ensure transactions is an array to prevent crashes
+    const txns = Array.isArray(transactions) ? transactions : [];
+
+    const taxable = txns.filter((t) => t.tax_status === "taxable");
+    const nonTaxable = txns.filter((t) => t.tax_status === "non_taxable");
+    const unclassified = txns.filter((t) => !t.tax_status || t.tax_status === "unclassified");
 
     const taxableTotal = taxable.reduce((sum, t) => sum + t.amount, 0);
     const nonTaxableTotal = nonTaxable.reduce((sum, t) => sum + t.amount, 0);
     const unclassifiedTotal = unclassified.reduce((sum, t) => sum + t.amount, 0);
-    const totalIncome = transactions.reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = txns.reduce((sum, t) => sum + t.amount, 0);
 
     return {
       taxableTotal,
@@ -474,7 +477,7 @@ export default function SMSIncomeTracker() {
       taxableCount: taxable.length,
       nonTaxableCount: nonTaxable.length,
       unclassifiedCount: unclassified.length,
-      totalCount: transactions.length,
+      totalCount: txns.length,
     };
   }
 
@@ -1131,7 +1134,7 @@ export default function SMSIncomeTracker() {
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto"></div>
                 <p className="text-gray-400 mt-4">Loading transactions...</p>
               </div>
-            ) : transactions.length === 0 ? (
+            ) : !Array.isArray(transactions) || transactions.length === 0 ? (
               <div className="text-center py-12">
                 <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-dark-600/50 flex items-center justify-center">
                   <FileText className="text-gray-500" size={32} />
