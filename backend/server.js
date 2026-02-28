@@ -728,7 +728,7 @@ ${pdfText.substring(0, 15000)}`
     // Check for duplicate transactions already in DB
     const existingRows = await pool.query(
       'SELECT date, amount, description FROM transactions WHERE user_id = $1',
-      [req.user.id]
+      [req.user.userId]
     );
     const existingSet = new Set(
       existingRows.rows.map(t =>
@@ -749,7 +749,7 @@ ${pdfText.substring(0, 15000)}`
            FROM bank_statements
            WHERE user_id = $1 AND period_start <= $2 AND period_end >= $3
            ORDER BY uploaded_at DESC`,
-          [req.user.id, periodEnd, periodStart]
+          [req.user.userId, periodEnd, periodStart]
         )
       : { rows: [] };
 
@@ -772,7 +772,7 @@ app.post('/api/bank-statements', authenticateToken, async (req, res) => {
     const result = await pool.query(
       `INSERT INTO bank_statements (user_id, filename, period_start, period_end, transaction_count)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [req.user.id, filename || 'bank-statement.pdf', periodStart, periodEnd, transactionCount || 0]
+      [req.user.userId, filename || 'bank-statement.pdf', periodStart, periodEnd, transactionCount || 0]
     );
     res.json({ success: true, statement: result.rows[0] });
   } catch (error) {
@@ -787,7 +787,7 @@ app.get('/api/bank-statements', authenticateToken, async (req, res) => {
     const result = await pool.query(
       `SELECT id, filename, period_start, period_end, transaction_count, uploaded_at
        FROM bank_statements WHERE user_id = $1 ORDER BY uploaded_at DESC`,
-      [req.user.id]
+      [req.user.userId]
     );
     res.json({ success: true, statements: result.rows });
   } catch (error) {

@@ -757,7 +757,7 @@ export default function SMSIncomeTracker() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ taxStatus, category }),
+        body: JSON.stringify({ taxCategory: taxStatus, incomeType: category }),
       });
 
       if (response.ok) {
@@ -831,9 +831,9 @@ export default function SMSIncomeTracker() {
     // Ensure transactions is an array to prevent crashes
     const txns = Array.isArray(transactions) ? transactions : [];
 
-    const taxable = txns.filter((t) => t.tax_status === "taxable");
-    const nonTaxable = txns.filter((t) => t.tax_status === "non_taxable");
-    const unclassified = txns.filter((t) => !t.tax_status || t.tax_status === "unclassified");
+    const taxable = txns.filter((t) => t.taxCategory === "taxable");
+    const nonTaxable = txns.filter((t) => t.taxCategory === "non_taxable");
+    const unclassified = txns.filter((t) => !t.taxCategory || t.taxCategory === "unclassified");
 
     const taxableTotal = taxable.reduce((sum, t) => sum + t.amount, 0);
     const nonTaxableTotal = nonTaxable.reduce((sum, t) => sum + t.amount, 0);
@@ -1543,19 +1543,19 @@ export default function SMSIncomeTracker() {
                       </div>
                       <div className="text-right">
                         <p className="text-xl font-bold text-green-400">{formatNGN(txn.amount)}</p>
-                        {txn.tax_status && (
+                        {txn.taxCategory && (
                           <span
                             className={`category-badge inline-block mt-1 ${
-                              txn.tax_status === "taxable"
+                              txn.taxCategory === "taxable"
                                 ? "bg-green-500/20 text-green-400"
-                                : txn.tax_status === "non_taxable"
+                                : txn.taxCategory === "non_taxable"
                                 ? "bg-purple-500/20 text-purple-400"
                                 : "bg-gray-500/20 text-gray-400"
                             }`}
                           >
-                            {txn.tax_status === "taxable"
+                            {txn.taxCategory === "taxable"
                               ? "TAXABLE"
-                              : txn.tax_status === "non_taxable"
+                              : txn.taxCategory === "non_taxable"
                               ? "EXEMPT"
                               : "UNCLASSIFIED"}
                           </span>
@@ -1564,7 +1564,7 @@ export default function SMSIncomeTracker() {
                     </div>
 
                     <div className="flex gap-2 mt-3">
-                      {(!txn.tax_status || txn.tax_status === "unclassified") && (
+                      {(!txn.taxCategory || txn.taxCategory === "unclassified") && (
                         <button
                           onClick={() => {
                             setSelectedTransaction(txn);
