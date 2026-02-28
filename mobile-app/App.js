@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import WelcomeScreen from './screens/WelcomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -43,10 +44,25 @@ export default function App() {
             await api.logout();
             setIsAuthenticated(false);
           } else {
-            // Network error or server error - keep them authenticated
-            // Dashboard will handle this gracefully
-            console.log('Network/server error during validation, keeping user authenticated');
-            setIsAuthenticated(true);
+            // Network error or server error
+            // Check if we have cached user data - if yes, keep authenticated
+            // If no cached data, clear auth to prevent blank screens
+            console.log('Network/server error during validation, checking cache');
+            try {
+              const cachedData = await AsyncStorage.getItem('userData');
+              if (cachedData) {
+                console.log('Found cached user data, keeping user authenticated');
+                setIsAuthenticated(true);
+              } else {
+                console.log('No cached data, clearing auth to prevent blank screen');
+                await api.logout();
+                setIsAuthenticated(false);
+              }
+            } catch (cacheError) {
+              console.error('Failed to check cache:', cacheError);
+              await api.logout();
+              setIsAuthenticated(false);
+            }
           }
         }
       } else {

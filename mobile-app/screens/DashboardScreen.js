@@ -45,6 +45,7 @@ export default function DashboardScreen({ navigation }) {
   const [tempName, setTempName] = useState('');
   const [smsPermissionGranted, setSmsPermissionGranted] = useState(false);
   const [smsListenerActive, setSmsListenerActive] = useState(false);
+  const [isNavigatingAway, setIsNavigatingAway] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -52,7 +53,9 @@ export default function DashboardScreen({ navigation }) {
       const isAuth = await api.isAuthenticated();
       if (!isAuth) {
         console.log('No auth token found, redirecting to login');
-        navigation.replace('Welcome');
+        setIsNavigatingAway(true);
+        // Use setTimeout to ensure state update happens
+        setTimeout(() => navigation.replace('Welcome'), 0);
         return;
       }
 
@@ -63,13 +66,16 @@ export default function DashboardScreen({ navigation }) {
         console.log('No user data returned but token exists');
         // Clear auth and redirect
         await api.logout();
+        setIsNavigatingAway(true);
         Alert.alert(
           'Session Error',
           'Unable to load your account. Please login again.',
           [
             {
               text: 'OK',
-              onPress: () => navigation.replace('Welcome')
+              onPress: () => {
+                setTimeout(() => navigation.replace('Welcome'), 0);
+              }
             }
           ]
         );
@@ -99,13 +105,16 @@ export default function DashboardScreen({ navigation }) {
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
         console.log('Authentication error, redirecting to login');
         await api.logout();
+        setIsNavigatingAway(true);
         Alert.alert(
           'Session Expired',
           'Your session has expired. Please login again.',
           [
             {
               text: 'OK',
-              onPress: () => navigation.replace('Welcome')
+              onPress: () => {
+                setTimeout(() => navigation.replace('Welcome'), 0);
+              }
             }
           ]
         );
@@ -213,8 +222,9 @@ export default function DashboardScreen({ navigation }) {
         text: 'Logout',
         style: 'destructive',
         onPress: async () => {
+          setIsNavigatingAway(true);
           await api.logout();
-          navigation.replace('Welcome');
+          setTimeout(() => navigation.replace('Welcome'), 0);
         },
       },
     ]);
@@ -418,13 +428,46 @@ export default function DashboardScreen({ navigation }) {
   const netIncome = totalIncome - taxAmount;
   const taxRate = getEffectiveRate(taxableIncome);
 
-  if (loading) {
+  if (loading || isNavigatingAway) {
     return (
       <LinearGradient
         colors={[colors.background, colors.backgroundSecondary]}
         style={styles.loadingContainer}
       >
         <ActivityIndicator size="large" color={colors.primary} />
+        {isNavigatingAway && (
+          <Text style={styles.loadingText}>Redirecting to login...</Text>
+        )}
+      </LinearGradient>
+    );
+  }
+
+  // If loading is done but we still don't have user data, show error state
+  if (!loading && !user) {
+    return (
+      <LinearGradient
+        colors={[colors.background, colors.backgroundSecondary]}
+        style={styles.loadingContainer}
+      >
+        <Text style={styles.errorTitle}>Unable to Load Profile</Text>
+        <Text style={styles.errorText}>
+          Could not load your account information. Please check your internet connection.
+        </Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={async () => {
+            setLoading(true);
+            await loadData();
+          }}
+        >
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.logoutLinkButton}
+          onPress={handleLogout}
+        >
+          <Text style={styles.logoutLinkText}>Logout</Text>
+        </TouchableOpacity>
       </LinearGradient>
     );
   }
@@ -707,6 +750,46 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  errorText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: spacing.xl,
+    lineHeight: 22,
+    marginBottom: spacing.xl,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.md,
+  },
+  retryButtonText: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  logoutLinkButton: {
+    paddingVertical: spacing.sm,
+  },
+  logoutLinkText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    textDecoration: 'underline',
   },
   scrollView: {
     flex: 1,
