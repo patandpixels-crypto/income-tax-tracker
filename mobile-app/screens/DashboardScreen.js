@@ -21,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { parseBankAlert } from '../services/bankAlertParser';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import {
   calculateTax,
   calculateNetIncome,
@@ -37,7 +38,8 @@ import {
 import { colors, spacing, typography, borderRadius } from '../theme';
 
 export default function DashboardScreen({ navigation }) {
-  const [user, setUser] = useState(null);
+  const { user: authUser, logout: authLogout, updateUser } = useAuth();
+  const [user, setUser] = useState(authUser);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -47,6 +49,13 @@ export default function DashboardScreen({ navigation }) {
   const [smsListenerActive, setSmsListenerActive] = useState(false);
   const [isNavigatingAway, setIsNavigatingAway] = useState(false);
 
+  // Sync local user state with auth context
+  useEffect(() => {
+    if (authUser) {
+      setUser(authUser);
+    }
+  }, [authUser]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -54,66 +63,26 @@ export default function DashboardScreen({ navigation }) {
       try {
         console.log('[Dashboard] Starting loadData...');
 
-        // Check if we have a token first
-        const isAuth = await api.isAuthenticated();
-        console.log('[Dashboard] Is authenticated:', isAuth);
-
-        if (!isAuth) {
-          console.log('[Dashboard] No auth token found, redirecting to login');
-          if (isMounted) {
-            setLoading(false);
-            setIsNavigatingAway(true);
-          }
-          setTimeout(() => {
-            if (isMounted) {
-              console.log('[Dashboard] Navigating to Welcome...');
-              navigation.replace('Welcome');
-            }
-          }, 100);
-          return;
-        }
-
+        // Fetch fresh user data
         console.log('[Dashboard] Fetching user data...');
         const userData = await api.getCurrentUser();
 
-        // If user data is null after having a token, something is wrong
         if (!userData) {
-          console.log('[Dashboard] No user data returned but token exists');
-          await api.logout();
-          if (isMounted) {
-            setLoading(false);
-            setIsNavigatingAway(true);
-          }
-          Alert.alert(
-            'Session Error',
-            'Unable to load your account. Please login again.',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  setTimeout(() => {
-                    if (isMounted) {
-                      console.log('[Dashboard] Navigating to Welcome after session error...');
-                      navigation.replace('Welcome');
-                    }
-                  }, 100);
-                }
-              }
-            ]
-          );
-          return;
+          console.log('[Dashboard] No user data returned');
+          throw new Error('Unable to load user data');
         }
 
         console.log('[Dashboard] User data loaded successfully:', userData.email);
         if (isMounted) {
           setUser(userData);
+          updateUser(userData); // Update auth context
         }
 
+        // Fetch transactions
         console.log('[Dashboard] Fetching transactions...');
         const response = await api.getTransactions();
         if (__DEV__) console.log('[Dashboard] API Response:', response);
 
-        // Handle response format: {success: true, transactions: [...]}
         const transactionsData = response.transactions || response;
         if (__DEV__) {
           console.log('[Dashboard] Transactions data:', transactionsData);
@@ -135,72 +104,25 @@ export default function DashboardScreen({ navigation }) {
           isNetworkError: !error.response,
         });
 
-        // If error is authentication-related (401/403), redirect to login
+        // If authentication error, logout via context (which will trigger navigation)
         if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-          console.log('[Dashboard] Authentication error, redirecting to login');
-          await api.logout();
-          if (isMounted) {
-            setLoading(false);
-            setIsNavigatingAway(true);
-          }
+          console.log('[Dashboard] Authentication error, logging out');
           Alert.alert(
             'Session Expired',
             'Your session has expired. Please login again.',
-            [
-              {
-                text: 'OK',
-                onPress: () => {
-                  setTimeout(() => {
-                    if (isMounted) {
-                      console.log('[Dashboard] Navigating to Welcome after session expiry...');
-                      navigation.replace('Welcome');
-                    }
-                  }, 100);
-                }
-              }
-            ]
+            [{ text: 'OK', onPress: () => authLogout() }]
           );
           return;
         }
 
-        // For other errors (network issues, server errors), show error but keep user logged in
+        // For other errors, try to use cached data
         console.warn('[Dashboard] Non-auth error, attempting to load cached data...');
-
-        // Try to load cached user data at least
         try {
           const cachedUserStr = await AsyncStorage.getItem('userData');
-          if (cachedUserStr) {
+          if (cachedUserStr && isMounted) {
             const cachedUser = JSON.parse(cachedUserStr);
             console.log('[Dashboard] Loaded cached user data:', cachedUser.email);
-            if (isMounted) {
-              setUser(cachedUser);
-            }
-          } else {
-            console.log('[Dashboard] No cached user data available');
-            // Show error message to user
-            Alert.alert(
-              'Connection Error',
-              'Unable to load your data. Please check your internet connection and try again.',
-              [
-                {
-                  text: 'Retry',
-                  onPress: () => {
-                    if (isMounted) {
-                      setLoading(true);
-                      loadData();
-                    }
-                  }
-                },
-                {
-                  text: 'Logout',
-                  style: 'destructive',
-                  onPress: async () => {
-                    await api.logout();
-                    navigation.replace('Welcome');
-                  }
-                }
-              ]
-            );
+            setUser(cachedUser);
           }
         } catch (cacheError) {
           console.error('[Dashboard] Failed to load cached user data:', cacheError);
@@ -210,6 +132,16 @@ export default function DashboardScreen({ navigation }) {
         if (isMounted) {
           setTransactions([]);
         }
+
+        // Show error alert
+        Alert.alert(
+          'Connection Error',
+          'Unable to load your data. Please check your internet connection and try again.',
+          [
+            { text: 'Retry', onPress: () => loadData() },
+            { text: 'Logout', style: 'destructive', onPress: () => authLogout() }
+          ]
+        );
       } finally {
         console.log('[Dashboard] Setting loading to false');
         if (isMounted) {
@@ -223,7 +155,7 @@ export default function DashboardScreen({ navigation }) {
     return () => {
       isMounted = false;
     };
-  }, [navigation]);
+  }, []);
 
   // Initialize SMS listener
   useEffect(() => {
@@ -297,16 +229,10 @@ export default function DashboardScreen({ navigation }) {
     try {
       console.log('[Dashboard] Refreshing data...');
 
-      const isAuth = await api.isAuthenticated();
-      if (!isAuth) {
-        console.log('[Dashboard] Not authenticated, redirecting');
-        navigation.replace('Welcome');
-        return;
-      }
-
       const userData = await api.getCurrentUser();
       if (userData) {
         setUser(userData);
+        updateUser(userData); // Update auth context
       }
 
       const response = await api.getTransactions();
@@ -318,10 +244,13 @@ export default function DashboardScreen({ navigation }) {
     } catch (error) {
       console.error('[Dashboard] Error during refresh:', error.message);
 
-      // If auth error, redirect
+      // If auth error, logout via context
       if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-        await api.logout();
-        navigation.replace('Welcome');
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please login again.',
+          [{ text: 'OK', onPress: () => authLogout() }]
+        );
       } else {
         // For other errors, just show a brief alert
         Alert.alert('Error', 'Failed to refresh data. Please try again.');
@@ -339,8 +268,8 @@ export default function DashboardScreen({ navigation }) {
         style: 'destructive',
         onPress: async () => {
           setIsNavigatingAway(true);
-          await api.logout();
-          setTimeout(() => navigation.replace('Welcome'), 0);
+          await authLogout();
+          // Navigation will happen automatically via AuthContext
         },
       },
     ]);
@@ -356,6 +285,7 @@ export default function DashboardScreen({ navigation }) {
       await api.updateBankAlertName(tempName);
       const updatedUser = await api.getCurrentUser();
       setUser(updatedUser);
+      updateUser(updatedUser); // Update auth context
       setShowNameInput(false);
       Alert.alert('Success', 'Bank alert name saved successfully!');
     } catch (error) {

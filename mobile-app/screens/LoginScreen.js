@@ -14,18 +14,14 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-// import * as Google from 'expo-auth-session/providers/google';
-// import * as WebBrowser from 'expo-web-browser';
-// import Constants from 'expo-constants';
-import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { colors, spacing, typography, borderRadius } from '../theme';
-
-// WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
 
   // Temporarily disabled Google Sign-In for Expo Go compatibility
   // const [request, response, promptAsync] = Google.useAuthRequest({
@@ -50,33 +46,22 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     try {
       console.log('[LoginScreen] Attempting login...');
-      const result = await api.login(email, password);
-      console.log('[LoginScreen] Login successful:', !!result);
+      await login(email, password);
+      console.log('[LoginScreen] Login successful, auth state updated');
 
-      // Verify authentication state before navigating
-      const isAuth = await api.isAuthenticated();
-      if (!isAuth) {
-        throw new Error('Authentication verification failed - token not saved properly');
-      }
-
-      console.log('[LoginScreen] Authentication verified, navigating to Dashboard...');
-
-      // Small delay to ensure all state is properly saved and navigation is ready
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      navigation.replace('Dashboard');
+      // Navigation will happen automatically via AuthContext state change
+      // No need to manually navigate - the stack navigator will switch to Dashboard
     } catch (error) {
       console.error('[LoginScreen] Login failed:', error.message);
       console.error('[LoginScreen] Error details:', error.response?.data);
-
-      setLoading(false); // Stop loading on error
 
       Alert.alert(
         'Login Failed',
         error?.response?.data?.message || error.message || 'Invalid email or password'
       );
+    } finally {
+      setLoading(false);
     }
-    // Note: Don't setLoading(false) on success - let Dashboard handle loading state
   };
 
   const handleForgotPassword = () => {
