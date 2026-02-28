@@ -505,7 +505,7 @@ export default function SMSIncomeTracker() {
             <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-gradient-purple p-3 shadow-dark-lg">
               <img src={logo} alt="Logo" className="h-full w-full object-contain brightness-0 invert" />
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">NairaTax</h1>
+            <h1 className="text-3xl font-bold text-white mb-2">Income Tax Tracker</h1>
             <p className="text-gray-400">Smart Income & Tax Tracking</p>
           </div>
 
@@ -920,8 +920,8 @@ export default function SMSIncomeTracker() {
               <img src={logo} alt="Logo" className="h-full w-full object-contain brightness-0 invert" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">NairaTax</h1>
-              <p className="text-sm text-gray-400">Income & Tax Tracker</p>
+              <h1 className="text-2xl font-bold text-white">Income Tax Tracker</h1>
+              <p className="text-sm text-gray-400">Smart Income & Tax Tracking</p>
             </div>
           </div>
 
