@@ -43,6 +43,21 @@ function isIncomeTransaction(description) {
 
   const lowerDesc = description.toLowerCase();
 
+  // First check for explicit income/credit indicators
+  const incomeKeywords = [
+    'credit',
+    'credited',
+    'received',
+    'deposit',
+    'payment received',
+    'transfer to you',
+    'salary',
+    'income',
+  ];
+
+  // If any income keyword is found, likely income unless contradicted
+  const hasIncomeKeyword = incomeKeywords.some(keyword => lowerDesc.includes(keyword));
+
   // Keywords that indicate expense/debit transactions
   const expenseKeywords = [
     'withdrawal',
@@ -51,7 +66,9 @@ function isIncomeTransaction(description) {
     'debit',
     'dr ',
     ' dr',
-    'transfer from',
+    'dr.',
+    'transfer from your',
+    'transfer from you',
     'payment to',
     'paid to',
     'sent to',
@@ -60,17 +77,269 @@ function isIncomeTransaction(description) {
     'purchase',
     'bill payment',
     'airtime',
-    'data bundle'
+    'data bundle',
+    'pos',
+    'atm',
+    'web payment',
+    'online payment',
+    'subscription',
   ];
 
   // Check if description contains any expense keywords
-  for (const keyword of expenseKeywords) {
-    if (lowerDesc.includes(keyword)) {
-      return false; // This is an expense transaction
+  const hasExpenseKeyword = expenseKeywords.some(keyword => lowerDesc.includes(keyword));
+
+  // If both are present, expense keywords take precedence (safer to filter out)
+  if (hasExpenseKeyword) {
+    return false; // This is an expense transaction
+  }
+
+  return true; // This is an income transaction (or unknown, which we keep)
+}
+
+// Parse bank alert SMS to extract transaction details
+function parseBankAlert(text, userName = null) {
+  if (!text) return null;
+
+  // Clean the text
+  const cleanedText = cleanForDetection(text);
+
+  // Check if it's a debit transaction
+  const isDebit = isDebitTransaction(cleanedText, userName);
+
+  // Extract amount
+  const amount = extractAmount(cleanedText);
+  if (!amount || amount <= 0) return null;
+
+  // Extract bank name
+  const bank = extractBankName(cleanedText);
+
+  // Extract description
+  const description = extractDescription(cleanedText, bank);
+  const finalDescription = description || (isDebit ? 'Bank debit' : 'Bank credit');
+
+  // Auto-classify for tax purposes
+  const classification = classifyForTax(finalDescription);
+
+  return {
+    amount,
+    type: isDebit ? 'expense' : 'income',
+    description: finalDescription,
+    bank: bank || 'Unknown Bank',
+    date: new Date().toISOString().split('T')[0], // Today's date
+    taxCategory: classification.taxCategory,
+    incomeType: classification.incomeType,
+  };
+}
+
+function cleanForDetection(text) {
+  if (!text) return '';
+
+  const lines = String(text)
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  // Remove common receipt footers that contain misleading words
+  const junkLineRegex =
+    /(enjoy a better life|get free transfers|withdrawals|bill payments|instant loans|annual interest|licensed by|central bank|insured by|ndic)/i;
+
+  const cleaned = lines.filter((l) => !junkLineRegex.test(l));
+  return cleaned.join('\n');
+}
+
+function isDebitTransaction(text, userName = null) {
+  const lowerText = text.toLowerCase();
+
+  // If user has saved their bank alert name, check if they are the sender
+  if (userName) {
+    const namePattern = new RegExp(escapeRegExp(userName), 'i');
+
+    // Check if user's name appears in Sender Details section
+    const senderMatch = text.match(/sender\s+details[\s\S]{0,200}/i);
+    if (senderMatch && namePattern.test(senderMatch[0])) {
+      console.log('DETECTED AS DEBIT: User is the sender');
+      return true; // User is sending money = debit
+    }
+
+    // Check if user's name appears in Recipient Details section
+    const recipientMatch = text.match(/recipient\s+details[\s\S]{0,200}/i);
+    if (recipientMatch && namePattern.test(recipientMatch[0])) {
+      console.log('DETECTED AS CREDIT: User is the recipient');
+      return false; // User is receiving money = credit
     }
   }
 
-  return true; // This is an income transaction
+  // Fallback: Check for OPay/Transfer receipts pattern
+  const senderIndex = lowerText.indexOf('sender details');
+  const recipientIndex = lowerText.indexOf('recipient details');
+
+  if (senderIndex !== -1 && recipientIndex !== -1) {
+    // Extract recipient name for business detection
+    const recipientMatch = text.match(/recipient\s+details[\s\S]{0,100}?([A-Z][A-Z\s]{5,})/i);
+
+    if (recipientMatch) {
+      const recipientName = recipientMatch[1].trim();
+      console.log('Recipient name extracted:', recipientName);
+
+      // Check if recipient has business keywords or all-caps business name patterns
+      const businessPatterns = /\b(ltd|limited|intl|international|partnership|company|enterprise|ventures|group|inc|corporation|church|ministry|foundation|ngo|association)\b/i;
+
+      // Check if it's an all-caps business name (usually 4+ words all caps)
+      const isAllCapsBusinessName = /^[A-Z\s]{10,}$/.test(recipientName) && recipientName.split(/\s+/).length >= 3;
+
+      if (businessPatterns.test(recipientName) || isAllCapsBusinessName) {
+        console.log('DETECTED AS DEBIT: Sending to business/organization');
+        return true; // Sending to a business = debit
+      }
+    }
+  }
+
+  // Critical keywords for debit
+  const criticalKeywords = ['debit', 'dr'];
+  for (const keyword of criticalKeywords) {
+    if (new RegExp(`\\b${keyword}\\b`, 'i').test(text)) return true;
+  }
+
+  // Other debit keywords
+  const debitKeywords = [
+    'debited',
+    'withdrawal',
+    'withdraw',
+    'transferred',
+    'transfer from your',
+    'payment to',
+    'paid to',
+    'sent to',
+    'deducted',
+    'charged',
+  ];
+
+  for (const keyword of debitKeywords) {
+    if (lowerText.includes(keyword)) return true;
+  }
+
+  return false;
+}
+
+function extractAmount(text) {
+  // Common patterns for amounts in Nigerian bank alerts
+  const patterns = [
+    /(?:NGN|N|₦)\s*([\d,]+(?:\.\d{2})?)/i,
+    /(?:amount|amt|sum)[\s:]*(?:NGN|N|₦)?\s*([\d,]+(?:\.\d{2})?)/i,
+    /(?:debited|credited|received|sent|paid)[\s:]*(?:NGN|N|₦)?\s*([\d,]+(?:\.\d{2})?)/i,
+    /([\d,]+(?:\.\d{2})?)\s*(?:NGN|naira)/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      const amountStr = match[1].replace(/,/g, '');
+      const amount = parseFloat(amountStr);
+      if (!isNaN(amount) && amount > 0) {
+        return amount;
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractBankName(text) {
+  const bankPatterns = {
+    'GTBank': /gt\s*bank|guaranty trust|gtb/i,
+    'Access Bank': /access\s*bank/i,
+    'First Bank': /first\s*bank|fbn/i,
+    'UBA': /uba|united bank for africa/i,
+    'Zenith Bank': /zenith\s*bank/i,
+    'Ecobank': /ecobank/i,
+    'Stanbic IBTC': /stanbic|ibtc/i,
+    'Fidelity Bank': /fidelity\s*bank/i,
+    'Union Bank': /union\s*bank/i,
+    'Sterling Bank': /sterling\s*bank/i,
+    'Polaris Bank': /polaris\s*bank/i,
+    'Wema Bank': /wema\s*bank/i,
+    'Keystone Bank': /keystone\s*bank/i,
+    'FCMB': /fcmb|first city monument/i,
+    'Opay': /opay|owealth/i,
+    'Kuda': /kuda\s*bank|kuda/i,
+    'PalmPay': /palmpay/i,
+    'Moniepoint': /moniepoint/i,
+  };
+
+  for (const [bankName, pattern] of Object.entries(bankPatterns)) {
+    if (pattern.test(text)) {
+      return bankName;
+    }
+  }
+
+  return null;
+}
+
+function extractDescription(text, bank) {
+  // Try to extract meaningful description
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // Look for description patterns
+  const descPatterns = [
+    /(?:desc|description|narration|details)[\s:]+(.+)/i,
+    /(?:to|from)[\s:]+(.+?)(?:acct|account|on|$)/i,
+  ];
+
+  for (const pattern of descPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+
+  // If no specific description found, use first meaningful line
+  if (lines.length > 0) {
+    return lines[0].substring(0, 100); // Limit to 100 chars
+  }
+
+  return null;
+}
+
+function classifyForTax(description) {
+  if (!description || description.trim().length < 3) {
+    return { taxCategory: 'unclassified', incomeType: 'other' };
+  }
+  const desc = description.toLowerCase().trim();
+
+  // Non-taxable patterns (Nigerian PITA)
+  const nonTaxablePatterns = [
+    { pattern: /\b(gift|birthday|xmas|christmas|wedding|congrat|donation|charity)\b/, type: 'gift' },
+    { pattern: /\b(loan|borrow|lending|repayment|payback)\b/, type: 'loan' },
+    { pattern: /\b(refund|reversal|chargeback|returned|cashback)\b/, type: 'refund' },
+    { pattern: /\b(dividend|div\b|share\s*profit)\b/, type: 'dividend' },
+    { pattern: /\b(pension|gratuity|retirement|severance)\b/, type: 'pension' },
+    { pattern: /\b(insurance|claim|indemnity)\b/, type: 'insurance' },
+  ];
+
+  for (const { pattern, type } of nonTaxablePatterns) {
+    if (pattern.test(desc)) {
+      return { taxCategory: 'non_taxable', incomeType: type };
+    }
+  }
+
+  // Taxable patterns
+  const taxablePatterns = [
+    { pattern: /\b(salary|sal\b|wage|monthly\s*pay|payroll)\b/, type: 'salary' },
+    { pattern: /\b(bonus|incentive|allowance|overtime)\b/, type: 'salary' },
+    { pattern: /\b(commission|comm\b)\b/, type: 'commission' },
+    { pattern: /\b(freelance|consulting|contract\s*pay|professional\s*fee)\b/, type: 'business' },
+    { pattern: /\b(rent|rental|lease|tenant)\b/, type: 'rental' },
+    { pattern: /\b(invoice|payment\s*for|service\s*charge)\b/, type: 'business' },
+    { pattern: /\b(business|revenue|sales|profit|earning|income)\b/, type: 'business' },
+  ];
+
+  for (const { pattern, type } of taxablePatterns) {
+    if (pattern.test(desc)) {
+      return { taxCategory: 'taxable', incomeType: type };
+    }
+  }
+
+  return { taxCategory: 'unclassified', incomeType: 'other' };
 }
 
 export default function SMSIncomeTracker() {
@@ -269,26 +538,47 @@ export default function SMSIncomeTracker() {
     setSuccess("");
 
     try {
+      // Parse the SMS text first
+      const parsedTransaction = parseBankAlert(smsText, userName);
+
+      if (!parsedTransaction) {
+        setError("Could not parse transaction from SMS. Please check the format.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if it's a debit/expense transaction
+      if (parsedTransaction.type === 'expense') {
+        setShowDebitPopup(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Send parsed transaction data to backend
       const response = await fetch(`${API_URL}/transactions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ smsText, userName }),
+        body: JSON.stringify({
+          date: parsedTransaction.date,
+          amount: parsedTransaction.amount,
+          description: parsedTransaction.description,
+          bank: parsedTransaction.bank,
+          rawSMS: smsText,
+          taxCategory: parsedTransaction.taxCategory,
+          incomeType: parsedTransaction.incomeType,
+        }),
       });
 
       const data = await response.json();
       if (!response.ok) {
-        if (data.error?.includes("debit")) {
-          setShowDebitPopup(true);
-        } else {
-          setError(data.error || "Failed to add transaction");
-        }
+        setError(data.error || "Failed to add transaction");
         return;
       }
 
-      setSuccess(`Transaction added successfully! Amount: ${formatNGN(data.amount)}`);
+      setSuccess(`Transaction added successfully! Amount: ${formatNGN(parsedTransaction.amount)}`);
       setSmsText("");
       loadTransactions();
     } catch (err) {
@@ -467,7 +757,7 @@ export default function SMSIncomeTracker() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ taxStatus, category }),
+        body: JSON.stringify({ taxCategory: taxStatus, incomeType: category }),
       });
 
       if (response.ok) {
@@ -541,14 +831,17 @@ export default function SMSIncomeTracker() {
     // Ensure transactions is an array to prevent crashes
     const txns = Array.isArray(transactions) ? transactions : [];
 
-    const taxable = txns.filter((t) => t.tax_status === "taxable");
-    const nonTaxable = txns.filter((t) => t.tax_status === "non_taxable");
-    const unclassified = txns.filter((t) => !t.tax_status || t.tax_status === "unclassified");
+    // ONLY include income/credit transactions in calculations
+    const incomeTransactions = txns.filter((t) => !t.type || t.type === "credit");
+
+    const taxable = incomeTransactions.filter((t) => t.taxCategory === "taxable");
+    const nonTaxable = incomeTransactions.filter((t) => t.taxCategory === "non_taxable");
+    const unclassified = incomeTransactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified");
 
     const taxableTotal = taxable.reduce((sum, t) => sum + t.amount, 0);
     const nonTaxableTotal = nonTaxable.reduce((sum, t) => sum + t.amount, 0);
     const unclassifiedTotal = unclassified.reduce((sum, t) => sum + t.amount, 0);
-    const totalIncome = txns.reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
     const taxLiability = calculateTax(taxableTotal);
 
     return {
@@ -560,7 +853,7 @@ export default function SMSIncomeTracker() {
       taxableCount: taxable.length,
       nonTaxableCount: nonTaxable.length,
       unclassifiedCount: unclassified.length,
-      totalCount: txns.length,
+      totalCount: incomeTransactions.length,
     };
   }
 
@@ -1239,7 +1532,7 @@ export default function SMSIncomeTracker() {
               </div>
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                {transactions.map((txn) => (
+                {transactions.filter((t) => !t.type || t.type === "credit").map((txn) => (
                   <div
                     key={txn.id}
                     className="glass-card p-4 hover:border-primary-500/30 transition-all"
@@ -1253,19 +1546,19 @@ export default function SMSIncomeTracker() {
                       </div>
                       <div className="text-right">
                         <p className="text-xl font-bold text-green-400">{formatNGN(txn.amount)}</p>
-                        {txn.tax_status && (
+                        {txn.taxCategory && (
                           <span
                             className={`category-badge inline-block mt-1 ${
-                              txn.tax_status === "taxable"
+                              txn.taxCategory === "taxable"
                                 ? "bg-green-500/20 text-green-400"
-                                : txn.tax_status === "non_taxable"
+                                : txn.taxCategory === "non_taxable"
                                 ? "bg-purple-500/20 text-purple-400"
                                 : "bg-gray-500/20 text-gray-400"
                             }`}
                           >
-                            {txn.tax_status === "taxable"
+                            {txn.taxCategory === "taxable"
                               ? "TAXABLE"
-                              : txn.tax_status === "non_taxable"
+                              : txn.taxCategory === "non_taxable"
                               ? "EXEMPT"
                               : "UNCLASSIFIED"}
                           </span>
@@ -1274,7 +1567,7 @@ export default function SMSIncomeTracker() {
                     </div>
 
                     <div className="flex gap-2 mt-3">
-                      {(!txn.tax_status || txn.tax_status === "unclassified") && (
+                      {(!txn.taxCategory || txn.taxCategory === "unclassified") && (
                         <button
                           onClick={() => {
                             setSelectedTransaction(txn);

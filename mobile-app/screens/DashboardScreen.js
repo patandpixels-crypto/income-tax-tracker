@@ -360,14 +360,17 @@ export default function DashboardScreen({ navigation }) {
 
   const handleExportCSV = async () => {
     try {
-      if (transactions.length === 0) {
-        Alert.alert('No Data', 'There are no transactions to export.');
+      // Only export income transactions
+      const exportTransactions = transactions.filter((t) => !t.type || t.type === 'credit');
+
+      if (exportTransactions.length === 0) {
+        Alert.alert('No Data', 'There are no income transactions to export.');
         return;
       }
 
       // Generate CSV content
       let csv = 'Date,Amount,Description,Type,Bank\n';
-      transactions.forEach((t) => {
+      exportTransactions.forEach((t) => {
         const desc = (t.description || '').replace(/"/g, '""');
         const type = t.type || 'income';
         const bank = t.bank || '';
@@ -659,15 +662,16 @@ export default function DashboardScreen({ navigation }) {
     }
   };
 
-  // Calculate totals with tax classification
-  const totalIncome = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
-  const taxableIncome = transactions
+  // Calculate totals with tax classification - ONLY include income/credit transactions
+  const incomeTransactions = transactions.filter((t) => !t.type || t.type === 'credit');
+  const totalIncome = incomeTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const taxableIncome = incomeTransactions
     .filter((t) => t.taxCategory === 'taxable')
     .reduce((sum, t) => sum + (t.amount || 0), 0);
-  const nonTaxableIncome = transactions
+  const nonTaxableIncome = incomeTransactions
     .filter((t) => t.taxCategory === 'non_taxable')
     .reduce((sum, t) => sum + (t.amount || 0), 0);
-  const unclassifiedCount = transactions.filter(
+  const unclassifiedCount = incomeTransactions.filter(
     (t) => !t.taxCategory || t.taxCategory === 'unclassified'
   ).length;
 
@@ -912,7 +916,7 @@ export default function DashboardScreen({ navigation }) {
               </Text>
             </View>
           ) : (
-            transactions.slice(0, 10).map((transaction, index) => (
+            incomeTransactions.slice(0, 10).map((transaction, index) => (
               <View key={transaction.id || transaction._id || index} style={styles.transactionItem}>
                 <View style={styles.transactionLeft}>
                   <Text style={styles.transactionIcon}>
