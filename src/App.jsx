@@ -831,14 +831,17 @@ export default function SMSIncomeTracker() {
     // Ensure transactions is an array to prevent crashes
     const txns = Array.isArray(transactions) ? transactions : [];
 
-    const taxable = txns.filter((t) => t.taxCategory === "taxable");
-    const nonTaxable = txns.filter((t) => t.taxCategory === "non_taxable");
-    const unclassified = txns.filter((t) => !t.taxCategory || t.taxCategory === "unclassified");
+    // ONLY include income/credit transactions in calculations
+    const incomeTransactions = txns.filter((t) => !t.type || t.type === "credit");
+
+    const taxable = incomeTransactions.filter((t) => t.taxCategory === "taxable");
+    const nonTaxable = incomeTransactions.filter((t) => t.taxCategory === "non_taxable");
+    const unclassified = incomeTransactions.filter((t) => !t.taxCategory || t.taxCategory === "unclassified");
 
     const taxableTotal = taxable.reduce((sum, t) => sum + t.amount, 0);
     const nonTaxableTotal = nonTaxable.reduce((sum, t) => sum + t.amount, 0);
     const unclassifiedTotal = unclassified.reduce((sum, t) => sum + t.amount, 0);
-    const totalIncome = txns.reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
     const taxLiability = calculateTax(taxableTotal);
 
     return {
@@ -850,7 +853,7 @@ export default function SMSIncomeTracker() {
       taxableCount: taxable.length,
       nonTaxableCount: nonTaxable.length,
       unclassifiedCount: unclassified.length,
-      totalCount: txns.length,
+      totalCount: incomeTransactions.length,
     };
   }
 
@@ -1529,7 +1532,7 @@ export default function SMSIncomeTracker() {
               </div>
             ) : (
               <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                {transactions.map((txn) => (
+                {transactions.filter((t) => !t.type || t.type === "credit").map((txn) => (
                   <div
                     key={txn.id}
                     className="glass-card p-4 hover:border-primary-500/30 transition-all"

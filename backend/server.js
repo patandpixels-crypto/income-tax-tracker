@@ -78,6 +78,7 @@ async function initializeDatabase() {
     // Add tax classification columns to existing transactions
     await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS tax_category TEXT DEFAULT 'unclassified'`);
     await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS income_type TEXT DEFAULT 'other'`);
+    await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'credit'`);
 
     console.log('Database tables initialized');
   } catch (error) {
@@ -401,7 +402,8 @@ app.get('/api/transactions', authenticateToken, async (req, res) => {
         bank: t.bank,
         rawSMS: t.raw_sms,
         taxCategory: t.tax_category || 'unclassified',
-        incomeType: t.income_type || 'other'
+        incomeType: t.income_type || 'other',
+        type: t.type || 'credit'
       }))
     });
   } catch (error) {
@@ -413,7 +415,7 @@ app.get('/api/transactions', authenticateToken, async (req, res) => {
 // Add transaction
 app.post('/api/transactions', authenticateToken, async (req, res) => {
   try {
-    const { date, amount, description, bank, rawSMS, taxCategory, incomeType } = req.body;
+    const { date, amount, description, bank, rawSMS, taxCategory, incomeType, type } = req.body;
 
     if (!date || !amount) {
       return res.status(400).json({ error: 'Date and amount required' });
@@ -424,9 +426,11 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
       ? { tax_category: taxCategory, income_type: incomeType || 'other' }
       : classifyTransaction(description);
 
+    const transactionType = type || 'credit'; // Default to credit (income)
+
     const result = await pool.query(
-      'INSERT INTO transactions (user_id, date, amount, description, bank, raw_sms, tax_category, income_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [req.user.userId, date, amount, description, bank, rawSMS, classification.tax_category, classification.income_type]
+      'INSERT INTO transactions (user_id, date, amount, description, bank, raw_sms, tax_category, income_type, type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [req.user.userId, date, amount, description, bank, rawSMS, classification.tax_category, classification.income_type, transactionType]
     );
 
     const t = result.rows[0];
@@ -440,7 +444,8 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
         bank: t.bank,
         rawSMS: t.raw_sms,
         taxCategory: t.tax_category,
-        incomeType: t.income_type
+        incomeType: t.income_type,
+        type: t.type
       }
     });
   } catch (error) {
@@ -464,7 +469,7 @@ app.post('/api/transactions/bulk', authenticateToken, async (req, res) => {
 
     for (const txn of txns) {
       try {
-        const { date, amount, description, bank, rawSMS, taxCategory, incomeType } = txn;
+        const { date, amount, description, bank, rawSMS, taxCategory, incomeType, type } = txn;
 
         if (!date || !amount) {
           failCount++;
@@ -476,9 +481,11 @@ app.post('/api/transactions/bulk', authenticateToken, async (req, res) => {
           ? { tax_category: taxCategory, income_type: incomeType || 'other' }
           : classifyTransaction(description);
 
+        const transactionType = type || 'credit'; // Default to credit (income)
+
         const result = await pool.query(
-          'INSERT INTO transactions (user_id, date, amount, description, bank, raw_sms, tax_category, income_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-          [req.user.userId, date, amount, description, bank, rawSMS || null, classification.tax_category, classification.income_type]
+          'INSERT INTO transactions (user_id, date, amount, description, bank, raw_sms, tax_category, income_type, type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+          [req.user.userId, date, amount, description, bank, rawSMS || null, classification.tax_category, classification.income_type, transactionType]
         );
 
         results.push(result.rows[0]);
@@ -515,7 +522,8 @@ app.post('/api/transactions/bulk', authenticateToken, async (req, res) => {
         bank: t.bank,
         rawSMS: t.raw_sms,
         taxCategory: t.tax_category,
-        incomeType: t.income_type
+        incomeType: t.income_type,
+        type: t.type
       }))
     });
   } catch (error) {
@@ -568,7 +576,8 @@ app.put('/api/transactions/:id/classify', authenticateToken, async (req, res) =>
       success: true,
       transaction: {
         id: t.id, date: t.date, amount: t.amount, description: t.description,
-        bank: t.bank, rawSMS: t.raw_sms, taxCategory: t.tax_category, incomeType: t.income_type
+        bank: t.bank, rawSMS: t.raw_sms, taxCategory: t.tax_category, incomeType: t.income_type,
+        type: t.type || 'credit'
       }
     });
   } catch (error) {
@@ -712,6 +721,7 @@ ${pdfText.substring(0, 15000)}`
             amount: parseFloat(t.amount) || 0,
             description: desc,
             bank: String(t.bank || ''),
+            type: 'credit',
             taxCategory: classification.tax_category,
             incomeType: classification.income_type,
           };
